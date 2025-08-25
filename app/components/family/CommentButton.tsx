@@ -17,7 +17,7 @@ export default function CommentButton({
     <TouchableOpacity
       style={styles.commentButton}
       onPress={() => {
-        console.log('Comment button pressed');
+    
         onPress?.();
       }}
     >

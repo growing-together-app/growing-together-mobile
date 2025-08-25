@@ -48,12 +48,7 @@ export default function RemoveMemberModal({
       return;
     }
 
-    console.log('Removing member:', {
-      memberId: member.id,
-      memberUserId: member.userId,
-      groupId: groupId,
-      memberName: member.user ? `${member.user.firstName} ${member.user.lastName}` : 'Unknown'
-    });
+
 
     setIsSubmitting(true);
     try {

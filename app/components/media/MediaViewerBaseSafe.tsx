@@ -412,6 +412,10 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
         <TouchableOpacity
           style={styles.closeButton}
           onPress={handleModalClose}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={0.7}
+          accessibilityLabel="Close media viewer"
+          accessibilityRole="button"
         >
           <MaterialIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
@@ -425,17 +429,24 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
           </View>
         )}
 
+        {/* Fallback close area - tap outside to close */}
+        <TouchableOpacity
+          style={styles.fallbackCloseArea}
+          onPress={handleModalClose}
+          activeOpacity={1}
+        />
+
         {selectedAttachment && (
           <ScrollView 
             ref={scrollViewRef}
             style={styles.fullScreenContent}
             contentContainerStyle={styles.fullScreenContentContainer}
             showsVerticalScrollIndicator={false}
-            horizontal
-            pagingEnabled
+            horizontal={safeAttachments.length > 1}
+            pagingEnabled={safeAttachments.length > 1}
             showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: (selectedIndex + 1) * screenWidth, y: 0 }}
-            onMomentumScrollEnd={(event) => {
+            contentOffset={safeAttachments.length > 1 ? { x: (selectedIndex + 1) * screenWidth, y: 0 } : undefined}
+            onMomentumScrollEnd={safeAttachments.length > 1 ? (event) => {
               const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
               let actualIndex = newIndex - 1;
               
@@ -456,8 +467,8 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
               setTimeout(() => {
                 setShowCounter(true);
               }, 1000);
-            }}
-            onScroll={(event) => {
+            } : undefined}
+            onScroll={safeAttachments.length > 1 ? (event) => {
               const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
               let actualIndex = newIndex - 1;
               
@@ -468,13 +479,13 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
               }
               
               setCurrentScrollIndex(actualIndex);
-            }}
-            onScrollBeginDrag={() => {
+            } : undefined}
+            onScrollBeginDrag={safeAttachments.length > 1 ? () => {
               setShowCounter(false);
-            }}
+            } : undefined}
             scrollEventThrottle={16}
           >
-            {/* Clone last item at the beginning */}
+            {/* Clone last item at the beginning - only for multiple items */}
             {safeAttachments.length > 1 && safeAttachments.slice(-1).map((attachment, _index) => (
               <View key={`clone-last-${attachment.id}`} style={styles.fullScreenItem}>
                 {attachment.type === "image" && (
@@ -530,11 +541,17 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
             
             {/* Original items */}
             {safeAttachments.map((attachment, index) => (
-              <View key={attachment.id || index} style={styles.fullScreenItem}>
+              <View key={attachment.id || index} style={[
+                styles.fullScreenItem,
+                safeAttachments.length === 1 && styles.singleItemContainer
+              ]}>
                 {attachment.type === "image" && (
                   <Image
                     source={{ uri: attachment.url }}
-                    style={styles.fullScreenImage}
+                    style={[
+                      styles.fullScreenImage,
+                      safeAttachments.length === 1 && styles.singleItemImage
+                    ]}
                     resizeMode="cover"
                   />
                 )}
@@ -555,11 +572,18 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
                   };
                   
                   return player ? (
-                    <View style={[styles.fullScreenVideo, { backgroundColor: '#000' }]}>
+                    <View style={[
+                      styles.fullScreenVideo, 
+                      { backgroundColor: '#000' },
+                      safeAttachments.length === 1 && styles.singleItemVideo
+                    ]}>
                       <VideoView
                         key={`video-fullscreen-${modalKey}-${modalOpeningKey}-${attachment.id || attachment.url}-${Date.now()}-${showFullScreen ? 'open' : 'closed'}`}
                         player={player}
-                        style={styles.fullScreenVideo}
+                        style={[
+                          styles.fullScreenVideo,
+                          safeAttachments.length === 1 && styles.singleItemVideo
+                        ]}
                         contentFit="contain"
                         nativeControls={true}
                         allowsFullscreen={true}
@@ -582,7 +606,7 @@ export default function MediaViewerBaseSafe<T extends BaseAttachment>({
               </View>
             ))}
             
-            {/* Clone first item at the end */}
+            {/* Clone first item at the end - only for multiple items */}
             {safeAttachments.length > 1 && safeAttachments.slice(0, 1).map((attachment, _index) => (
               <View key={`clone-first-${attachment.id}`} style={styles.fullScreenItem}>
                 {attachment.type === "image" && (
@@ -763,10 +787,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 50,
     right: 20,
-    zIndex: 1000,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: 20,
-    padding: 8,
+    zIndex: 9999,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderRadius: 25,
+    padding: 12,
+    minWidth: 50,
+    minHeight: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   galleryIndicator: {
     position: "absolute",
@@ -817,5 +845,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+  },
+  fallbackCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1, // Ensure it's behind other content
+  },
+  singleItemContainer: {
+    width: screenWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  singleItemImage: {
+    width: screenWidth,
+    height: screenWidth,
+  },
+  singleItemVideo: {
+    width: screenWidth,
+    aspectRatio: 16/9,
   },
 }); 

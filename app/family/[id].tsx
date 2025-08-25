@@ -1,24 +1,32 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AddChildToGroupModal from '../components/family/AddChildToGroupModal';
-import EditFamilyGroupModal from '../components/family/EditFamilyGroupModal';
-import FamilyGroupPermissions from '../components/family/FamilyGroupPermissions';
-import InvitationQRModal from '../components/family/InvitationQRModal';
-import InviteMemberModal from '../components/family/InviteMemberModal';
-import LeaveGroupModal from '../components/family/LeaveGroupModal';
-import PendingInvitationsModal from '../components/family/PendingInvitationsModal';
-import RemoveMemberModal from '../components/family/RemoveMemberModal';
-import TimelinePost from '../components/family/TimelinePost';
+import { MaterialIcons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import AddChildToGroupModal from "../components/family/AddChildToGroupModal";
+import EditFamilyGroupModal from "../components/family/EditFamilyGroupModal";
+import FamilyGroupPermissions from "../components/family/FamilyGroupPermissions";
+import InvitationQRModal from "../components/family/InvitationQRModal";
+import InviteMemberModal from "../components/family/InviteMemberModal";
+import LeaveGroupModal from "../components/family/LeaveGroupModal";
+import PendingInvitationsModal from "../components/family/PendingInvitationsModal";
+import RemoveMemberModal from "../components/family/RemoveMemberModal";
+import TimelinePost from "../components/family/TimelinePost";
 
-import AppHeader from '../components/layout/AppHeader';
-import ScreenWithFooter from '../components/layout/ScreenWithFooter';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { useGroupRefresh } from '../hooks/useGroupRefresh';
-import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { fetchFamilyGroup } from '../redux/slices/familySlice';
-import * as familyService from '../services/familyService';
+import AppHeader from "../components/layout/AppHeader";
+import ScreenWithFooter from "../components/layout/ScreenWithFooter";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+import { useGroupRefresh } from "../hooks/useGroupRefresh";
+import { useAppDispatch, useAppSelector } from "../redux/hooks";
+import { fetchFamilyGroup } from "../redux/slices/familySlice";
+import * as familyService from "../services/familyService";
 
 type TabType = "children" | "timeline" | "members" | "edit";
 
@@ -26,13 +34,15 @@ export default function FamilyGroupDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const dispatch = useAppDispatch();
-  
-  const { currentGroup, loading, error } = useAppSelector((state) => state.family);
+
+  const { currentGroup, loading, error } = useAppSelector(
+    (state) => state.family
+  );
   const { user } = useAppSelector((state) => state.auth);
-  
+
   // Use the group refresh hook
   const { refreshGroupData } = useGroupRefresh(id as string);
-  
+
   // Silent refresh function for after adding child
   const silentRefresh = async () => {
     try {
@@ -43,13 +53,14 @@ export default function FamilyGroupDetailScreen() {
       // Silent refresh error handled silently
     }
   };
-  
+
   const [activeTab, setActiveTab] = useState<TabType>("children");
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
   const [showLeaveGroupModal, setShowLeaveGroupModal] = useState(false);
-  const [showPendingInvitationsModal, setShowPendingInvitationsModal] = useState(false);
+  const [showPendingInvitationsModal, setShowPendingInvitationsModal] =
+    useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showRemoveMemberModal, setShowRemoveMemberModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
@@ -86,23 +97,15 @@ export default function FamilyGroupDetailScreen() {
       setLoadingChildren(true);
     }
     try {
-      const response: any = await familyService.getFamilyGroupChildren(currentGroup.id);
+      const response: any = await familyService.getFamilyGroupChildren(
+        currentGroup.id
+      );
       const children = response.children || response;
-      console.log('Fetched group children:', {
-        groupId: currentGroup.id,
-        groupName: currentGroup.name,
-        childrenCount: children.length,
-        children: children.map((child: any) => ({
-          id: child.id || child._id,
-          name: child.name || child.firstName + ' ' + child.lastName,
-          familyGroupId: child.familyGroupId
-        }))
-      });
       setGroupChildren(children);
     } catch (error) {
-      console.error('Error fetching group children:', error);
+      console.error("Error fetching group children:", error);
       setGroupChildren([]);
-      Alert.alert('Error', 'Failed to fetch group children. Please try again.');
+      Alert.alert("Error", "Failed to fetch group children. Please try again.");
     } finally {
       if (showLoading) {
         setLoadingChildren(false);
@@ -115,17 +118,24 @@ export default function FamilyGroupDetailScreen() {
     if (!currentGroup?.id) return;
     setLoadingTimeline(true);
     try {
-      const response = await familyService.getFamilyGroupTimeline(currentGroup.id, timelinePage, TIMELINE_LIMIT);
+      const response = await familyService.getFamilyGroupTimeline(
+        currentGroup.id,
+        timelinePage,
+        TIMELINE_LIMIT
+      );
       if (timelinePage === 1) {
         setTimelinePosts(response.timeline || []);
       } else {
-        setTimelinePosts(prevPosts => [...prevPosts, ...(response.timeline || [])]);
+        setTimelinePosts((prevPosts) => [
+          ...prevPosts,
+          ...(response.timeline || []),
+        ]);
       }
       setHasMoreTimeline(response.pagination?.hasMore || false);
     } catch (error) {
-      console.error('Error fetching timeline posts:', error);
+      console.error("Error fetching timeline posts:", error);
       setTimelinePosts([]);
-      Alert.alert('Error', 'Failed to fetch timeline posts. Please try again.');
+      Alert.alert("Error", "Failed to fetch timeline posts. Please try again.");
     } finally {
       setLoadingTimeline(false);
     }
@@ -150,14 +160,14 @@ export default function FamilyGroupDetailScreen() {
 
   // Fetch next pages when timelinePage changes (after initial load)
   useEffect(() => {
-    if (activeTab === 'timeline' && timelinePage > 1) {
+    if (activeTab === "timeline" && timelinePage > 1) {
       fetchTimelinePosts();
     }
   }, [timelinePage]);
 
   const handleLoadMoreTimeline = () => {
     if (loadingTimeline || !hasMoreTimeline) return;
-    setTimelinePage(prev => prev + 1);
+    setTimelinePage((prev) => prev + 1);
   };
 
   // Handle child press
@@ -172,15 +182,14 @@ export default function FamilyGroupDetailScreen() {
   };
 
   // Handle comment press
-  const handleCommentPress = () => {
-  };
+  const handleCommentPress = () => {};
 
   const handleQRButtonPress = () => {
     // For demo purposes, create mock invitation data
     setInvitationData({
-      token: 'demo123456789012345678901234567890',
-      groupName: currentGroup?.name || 'Family Group',
-      role: 'parent',
+      token: "demo123456789012345678901234567890",
+      groupName: currentGroup?.name || "Family Group",
+      role: "parent",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
     setShowQRModal(true);
@@ -204,24 +213,20 @@ export default function FamilyGroupDetailScreen() {
 
   const handleDeleteGroup = async () => {
     if (!currentGroup?.id) return;
-    
+
     try {
       await familyService.deleteFamilyGroup(currentGroup.id);
-      Alert.alert(
-        'Success',
-        'Family group has been deleted successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate back to home after deleting group
-              router.push('/tabs/home');
-            },
+      Alert.alert("Success", "Family group has been deleted successfully.", [
+        {
+          text: "OK",
+          onPress: () => {
+            // Navigate back to home after deleting group
+            router.push("/tabs/home");
           },
-        ]
-      );
+        },
+      ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to delete family group');
+      Alert.alert("Error", error.message || "Failed to delete family group");
     }
   };
 
@@ -247,7 +252,7 @@ export default function FamilyGroupDetailScreen() {
               Add children to see them here
             </Text>
           </View>
-          
+
           {/* Owner-only: Add Child Button */}
           {currentGroup?.ownerId === user?.id && (
             <TouchableOpacity
@@ -267,7 +272,10 @@ export default function FamilyGroupDetailScreen() {
         <Text style={styles.sectionTitle}>
           Children ({groupChildren.length})
         </Text>
-        <ScrollView style={styles.childrenList} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.childrenList}
+          showsVerticalScrollIndicator={false}
+        >
           {groupChildren.map((child) => (
             <TouchableOpacity
               key={child.id || child._id}
@@ -284,7 +292,11 @@ export default function FamilyGroupDetailScreen() {
                   </View>
                 ) : (
                   <View style={styles.childAvatarPlaceholder}>
-                    <MaterialIcons name="child-care" size={24} color="#4f8cff" />
+                    <MaterialIcons
+                      name="child-care"
+                      size={24}
+                      color="#4f8cff"
+                    />
                   </View>
                 )}
                 <View style={styles.childDetails}>
@@ -292,13 +304,14 @@ export default function FamilyGroupDetailScreen() {
                     {child.name || `${child.firstName} ${child.lastName}`}
                   </Text>
                   <Text style={styles.childInfo}>
-                    {child.birthdate || child.dateOfBirth ? 
-                      `Born: ${new Date(child.birthdate || child.dateOfBirth).toLocaleDateString()}` : 
-                      'Birthdate not set'
-                    }
+                    {child.birthdate || child.dateOfBirth
+                      ? `Born: ${new Date(
+                          child.birthdate || child.dateOfBirth
+                        ).toLocaleDateString()}`
+                      : "Birthdate not set"}
                   </Text>
                   <Text style={styles.childInfo}>
-                    {child.gender || 'Gender not set'}
+                    {child.gender || "Gender not set"}
                   </Text>
                 </View>
               </View>
@@ -322,7 +335,6 @@ export default function FamilyGroupDetailScreen() {
 
   // Render timeline section
   const renderTimelineSection = () => {
-    
     if (loadingTimeline) {
       return (
         <View style={styles.sectionPlaceholder}>
@@ -335,9 +347,7 @@ export default function FamilyGroupDetailScreen() {
       return (
         <View style={styles.sectionPlaceholder}>
           <MaterialIcons name="timeline" size={48} color="#ccc" />
-          <Text style={styles.placeholderText}>
-            No posts in timeline yet
-          </Text>
+          <Text style={styles.placeholderText}>No posts in timeline yet</Text>
           <Text style={styles.placeholderSubtext}>
             Public posts from children will appear here
           </Text>
@@ -350,7 +360,10 @@ export default function FamilyGroupDetailScreen() {
         <Text style={styles.sectionTitle}>
           Timeline ({timelinePosts.length} posts)
         </Text>
-        <ScrollView style={styles.timelineList} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.timelineList}
+          showsVerticalScrollIndicator={false}
+        >
           {timelinePosts.map((post) => (
             <TimelinePost
               key={post._id || post.id}
@@ -362,23 +375,25 @@ export default function FamilyGroupDetailScreen() {
           {hasMoreTimeline && (
             <TouchableOpacity
               style={{
-                alignSelf: 'center',
+                alignSelf: "center",
                 marginVertical: 12,
                 paddingHorizontal: 16,
                 paddingVertical: 10,
                 borderRadius: 8,
-                backgroundColor: '#eef3ff',
+                backgroundColor: "#eef3ff",
               }}
               disabled={loadingTimeline}
               onPress={handleLoadMoreTimeline}
             >
-              <Text style={{ color: '#4f8cff', fontWeight: '600' }}>
-                {loadingTimeline ? 'Đang tải...' : 'Xem thêm'}
+              <Text style={{ color: "#4f8cff", fontWeight: "600" }}>
+                {loadingTimeline ? "Đang tải..." : "Xem thêm"}
               </Text>
             </TouchableOpacity>
           )}
           {!hasMoreTimeline && timelinePosts.length > 0 && (
-            <Text style={{ textAlign: 'center', color: '#999', marginVertical: 8 }}>
+            <Text
+              style={{ textAlign: "center", color: "#999", marginVertical: 8 }}
+            >
               Đã hiển thị tất cả bài viết
             </Text>
           )}
@@ -399,8 +414,10 @@ export default function FamilyGroupDetailScreen() {
 
     // Check user permissions
     const isOwner = currentGroup?.ownerId === user?.id;
-    const isAdmin = currentGroup?.members?.some((member: any) => 
-      member.userId === user?.id && (member.role === 'admin' || member.role === 'owner')
+    const isAdmin = currentGroup?.members?.some(
+      (member: any) =>
+        member.userId === user?.id &&
+        (member.role === "admin" || member.role === "owner")
     );
     const canRemoveMembers = isOwner || isAdmin;
 
@@ -434,11 +451,15 @@ export default function FamilyGroupDetailScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        <ScrollView style={styles.membersList} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.membersList}
+          showsVerticalScrollIndicator={false}
+        >
           {currentGroup.members.map((member: any) => {
-            const isCurrentUser = member.userId === user?.id || member.user?.id === user?.id;
+            const isCurrentUser =
+              member.userId === user?.id || member.user?.id === user?.id;
             const canRemoveThisMember = canRemoveMembers && !isCurrentUser;
-            
+
             return (
               <View key={member.id || member._id} style={styles.memberCard}>
                 <View style={styles.memberInfo}>
@@ -450,19 +471,24 @@ export default function FamilyGroupDetailScreen() {
                       />
                     ) : (
                       <Text style={styles.memberAvatarText}>
-                        {member.user?.firstName?.charAt(0).toUpperCase() || 
-                         member.user?.lastName?.charAt(0).toUpperCase() || 
-                         'U'}
+                        {member.user?.firstName?.charAt(0).toUpperCase() ||
+                          member.user?.lastName?.charAt(0).toUpperCase() ||
+                          "U"}
                       </Text>
                     )}
                   </View>
                   <View style={styles.memberDetails}>
                     <Text style={styles.memberName}>
-                      {member.user ? `${member.user.firstName} ${member.user.lastName}` : 'Unknown'}
+                      {member.user
+                        ? `${member.user.firstName} ${member.user.lastName}`
+                        : "Unknown"}
                     </Text>
                     <Text style={styles.memberRole}>
-                      {member.role === 'admin' ? 'Admin' : 
-                       member.role === 'owner' ? 'Owner' : 'Member'}
+                      {member.role === "admin"
+                        ? "Admin"
+                        : member.role === "owner"
+                        ? "Owner"
+                        : "Member"}
                     </Text>
                   </View>
                 </View>
@@ -472,7 +498,11 @@ export default function FamilyGroupDetailScreen() {
                       style={styles.removeMemberButton}
                       onPress={() => handleRemoveMember(member)}
                     >
-                      <MaterialIcons name="remove-circle" size={20} color="#e74c3c" />
+                      <MaterialIcons
+                        name="remove-circle"
+                        size={20}
+                        color="#e74c3c"
+                      />
                     </TouchableOpacity>
                   )}
                   {isCurrentUser && !isOwner && (
@@ -480,7 +510,11 @@ export default function FamilyGroupDetailScreen() {
                       style={styles.leaveGroupButton}
                       onPress={handleLeaveGroup}
                     >
-                      <MaterialIcons name="exit-to-app" size={20} color="#e74c3c" />
+                      <MaterialIcons
+                        name="exit-to-app"
+                        size={20}
+                        color="#e74c3c"
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -495,14 +529,16 @@ export default function FamilyGroupDetailScreen() {
   // Render edit section
   const renderEditSection = () => {
     const isOwner = currentGroup?.ownerId === user?.id;
-    const isAdmin = currentGroup?.members?.some((member: any) => 
-      member.userId === user?.id && (member.role === 'admin' || member.role === 'owner')
+    const isAdmin = currentGroup?.members?.some(
+      (member: any) =>
+        member.userId === user?.id &&
+        (member.role === "admin" || member.role === "owner")
     );
 
     return (
       <View style={styles.editContainer}>
         {/* Permissions and Role Information */}
-        <FamilyGroupPermissions 
+        <FamilyGroupPermissions
           currentGroup={currentGroup}
           currentUser={user}
         />
@@ -511,17 +547,17 @@ export default function FamilyGroupDetailScreen() {
         {(isOwner || isAdmin) && (
           <View style={styles.editSettingsSection}>
             <Text style={styles.sectionTitle}>Group Settings</Text>
-            
+
             <View style={styles.editCard}>
               <View style={styles.editInfo}>
                 <Text style={styles.editLabel}>Group Name</Text>
                 <Text style={styles.editValue}>{currentGroup?.name}</Text>
               </View>
-              
+
               <View style={styles.editInfo}>
                 <Text style={styles.editLabel}>Description</Text>
                 <Text style={styles.editValue}>
-                  {currentGroup?.description || 'No description'}
+                  {currentGroup?.description || "No description"}
                 </Text>
               </View>
             </View>
@@ -533,8 +569,6 @@ export default function FamilyGroupDetailScreen() {
               <MaterialIcons name="edit" size={20} color="#fff" />
               <Text style={styles.editButtonText}>Edit Group Settings</Text>
             </TouchableOpacity>
-
-
           </View>
         )}
 
@@ -643,26 +677,32 @@ export default function FamilyGroupDetailScreen() {
       <AppHeader
         title={currentGroup.name || "Family Group"}
         onSearchChange={handleSearch}
-        searchPlaceholder={`Search in ${currentGroup.name || 'family group'}...`}
+        searchPlaceholder={`Search in ${
+          currentGroup.name || "family group"
+        }...`}
         showBackButton={true}
         showForwardButton={false}
         showTitle={false}
         showLogoutButton={true}
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === "children" && styles.activeTab]}
             onPress={() => setActiveTab("children")}
           >
-            <MaterialIcons 
-              name="child-care" 
-              size={20} 
-              color={activeTab === "children" ? "#4f8cff" : "#666"} 
+            <MaterialIcons
+              name="child-care"
+              size={20}
+              color={activeTab === "children" ? "#4f8cff" : "#666"}
             />
-            <Text style={[styles.tabText, activeTab === "children" && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "children" && styles.activeTabText,
+              ]}
+            >
               Children
             </Text>
           </TouchableOpacity>
@@ -671,12 +711,17 @@ export default function FamilyGroupDetailScreen() {
             style={[styles.tab, activeTab === "timeline" && styles.activeTab]}
             onPress={() => setActiveTab("timeline")}
           >
-            <MaterialIcons 
-              name="timeline" 
-              size={20} 
-              color={activeTab === "timeline" ? "#4f8cff" : "#666"} 
+            <MaterialIcons
+              name="timeline"
+              size={20}
+              color={activeTab === "timeline" ? "#4f8cff" : "#666"}
             />
-            <Text style={[styles.tabText, activeTab === "timeline" && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "timeline" && styles.activeTabText,
+              ]}
+            >
               Timeline
             </Text>
           </TouchableOpacity>
@@ -685,12 +730,17 @@ export default function FamilyGroupDetailScreen() {
             style={[styles.tab, activeTab === "members" && styles.activeTab]}
             onPress={() => setActiveTab("members")}
           >
-            <MaterialIcons 
-              name="people" 
-              size={20} 
-              color={activeTab === "members" ? "#4f8cff" : "#666"} 
+            <MaterialIcons
+              name="people"
+              size={20}
+              color={activeTab === "members" ? "#4f8cff" : "#666"}
             />
-            <Text style={[styles.tabText, activeTab === "members" && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "members" && styles.activeTabText,
+              ]}
+            >
               Members
             </Text>
           </TouchableOpacity>
@@ -699,12 +749,17 @@ export default function FamilyGroupDetailScreen() {
             style={[styles.tab, activeTab === "edit" && styles.activeTab]}
             onPress={() => setActiveTab("edit")}
           >
-            <MaterialIcons 
-              name="edit" 
-              size={20} 
-              color={activeTab === "edit" ? "#4f8cff" : "#666"} 
+            <MaterialIcons
+              name="edit"
+              size={20}
+              color={activeTab === "edit" ? "#4f8cff" : "#666"}
             />
-            <Text style={[styles.tabText, activeTab === "edit" && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "edit" && styles.activeTabText,
+              ]}
+            >
               Edit
             </Text>
           </TouchableOpacity>
@@ -715,8 +770,6 @@ export default function FamilyGroupDetailScreen() {
           {activeTab === "children" && (
             <View style={styles.childrenSection}>
               {renderChildrenSection()}
-              
-              
             </View>
           )}
 
@@ -733,7 +786,7 @@ export default function FamilyGroupDetailScreen() {
         familyGroupName={currentGroup.name}
         existingChildren={groupChildren}
         onGroupUpdated={async () => {
-          console.log('Group updated, refreshing children list...');
+  
           // Force refresh children list
           await fetchGroupChildren(false);
         }}
@@ -786,7 +839,7 @@ export default function FamilyGroupDetailScreen() {
           member={selectedMember}
           groupId={currentGroup.id}
           groupName={currentGroup.name}
-          currentUserRole={user?.id || ''}
+          currentUserRole={user?.id || ""}
         />
       )}
 
@@ -795,11 +848,11 @@ export default function FamilyGroupDetailScreen() {
         onClose={() => setShowLeaveGroupModal(false)}
         onSuccess={() => {
           // Navigate back to home after leaving group
-          router.push('/tabs/home');
+          router.push("/tabs/home");
         }}
         groupId={currentGroup.id}
         groupName={currentGroup.name}
-        userRole={user?.id || ''}
+        userRole={user?.id || ""}
         isOwner={currentGroup?.ownerId === user?.id}
       />
     </ScreenWithFooter>
@@ -887,17 +940,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 16,
   },
   actionButtonText: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
     marginLeft: 4,
   },
   sectionPlaceholder: {
@@ -1026,8 +1079,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   childAvatarImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 25,
   },
   childAvatarText: {
@@ -1180,7 +1233,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   attachmentItem: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 8,
@@ -1208,7 +1261,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#d0e3ff",
-    position: 'relative',
+    position: "relative",
   },
   reactionButton: {
     paddingHorizontal: 8,
@@ -1220,75 +1273,75 @@ const styles = StyleSheet.create({
   defaultReactionButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   defaultReactionIcon: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   reactionMenuContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 10,
   },
   reactionMenu: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
     padding: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minWidth: 200,
     minHeight: 60,
   },
   reactionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   reactionSummaryInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   reactionSummaryText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginLeft: 8,
   },
   commentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 'auto',
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: "auto",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 18,
-    color: '#333',
+    color: "#333",
     marginTop: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorSubtext: {
     fontSize: 14,
-    color: '#999',
+    color: "#999",
     marginTop: 5,
-    textAlign: 'center',
+    textAlign: "center",
   },
   childrenSection: {
     marginHorizontal: 16,
@@ -1399,33 +1452,33 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e0e7ff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e0e7ff",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
   },
   inviteButtonText: {
     fontSize: 14,
-    color: '#4f8cff',
-    fontWeight: '600',
+    color: "#4f8cff",
+    fontWeight: "600",
     marginLeft: 4,
   },
   memberActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   memberCardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   removeMemberButton: {

@@ -1,13 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { deleteResponse, fetchChildResponses } from '../../redux/slices/promptResponseSlice';
@@ -184,7 +184,7 @@ export default function QAContent({ childId, useScrollView = false, editingItem 
 
   const handleLoadMore = () => {
     setVisibleCardsCount(prev => prev + 3); // Load 3 more cards
-    console.log('QAContent: Loading more cards, new count:', visibleCardsCount + 3);
+
   };
 
   // Debounce mechanism for loadMoreData
@@ -297,10 +297,7 @@ export default function QAContent({ childId, useScrollView = false, editingItem 
     { type: 'ask-button' },
   ];
 
-  console.log('QAContent: Current prompts count:', prompts.length);
-  console.log('QAContent: Current responses count:', responses.length);
-  console.log('QAContent: Prompts:', prompts.map(p => ({ id: p.id, content: p.content })));
-  console.log('QAContent: Responses:', responses.map(r => ({ id: r.id, promptId: r.promptId, content: r.content })));
+  
 
   // Collect all Q&A cards with duplicate prevention
   const qaCards: ListItem[] = [];
