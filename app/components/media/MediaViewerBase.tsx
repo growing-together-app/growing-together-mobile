@@ -587,6 +587,10 @@ function MediaViewerBase<T extends BaseAttachment>({
             isLandscape && styles.closeButtonLandscape
           ]}
           onPress={handleModalClose}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={0.7}
+          accessibilityLabel="Close media viewer"
+          accessibilityRole="button"
         >
           <MaterialIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
@@ -600,17 +604,24 @@ function MediaViewerBase<T extends BaseAttachment>({
           </View>
         )}
 
+        {/* Fallback close area - tap outside to close */}
+        <TouchableOpacity
+          style={styles.fallbackCloseArea}
+          onPress={handleModalClose}
+          activeOpacity={1}
+        />
+
         {selectedAttachment && (
           <ScrollView 
             ref={scrollViewRef}
             style={styles.fullScreenContent}
             contentContainerStyle={styles.fullScreenContentContainer}
             showsVerticalScrollIndicator={false}
-            horizontal
-            pagingEnabled
+            horizontal={safeAttachments.length > 1}
+            pagingEnabled={safeAttachments.length > 1}
             showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: (selectedIndex + 1) * screenWidth, y: 0 }}
-            onMomentumScrollEnd={(event) => {
+            contentOffset={safeAttachments.length > 1 ? { x: (selectedIndex + 1) * screenWidth, y: 0 } : undefined}
+            onMomentumScrollEnd={safeAttachments.length > 1 ? (event) => {
               const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
               let actualIndex = newIndex - 1;
               
@@ -635,8 +646,8 @@ function MediaViewerBase<T extends BaseAttachment>({
               setTimeout(() => {
                 setShowCounter(true);
               }, 1000); // Show after 1 second of no scrolling
-            }}
-            onScroll={(event) => {
+            } : undefined}
+            onScroll={safeAttachments.length > 1 ? (event) => {
               const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
               let actualIndex = newIndex - 1;
               
@@ -648,14 +659,14 @@ function MediaViewerBase<T extends BaseAttachment>({
               }
               
               setCurrentScrollIndex(actualIndex);
-            }}
-            onScrollBeginDrag={() => {
+            } : undefined}
+            onScrollBeginDrag={safeAttachments.length > 1 ? () => {
               // Hide counter when user starts scrolling
               setShowCounter(false);
-            }}
+            } : undefined}
             scrollEventThrottle={16}
           >
-            {/* Clone last item at the beginning */}
+            {/* Clone last item at the beginning - only for multiple items */}
             {safeAttachments.length > 1 && safeAttachments.slice(-1).map((attachment, _index) => (
               <View key={`clone-last-${attachment.id}`} style={styles.fullScreenItem}>
                 {attachment.type === "image" && (
@@ -682,29 +693,18 @@ function MediaViewerBase<T extends BaseAttachment>({
                   };
                   
                   return player ? (
-                    <View style={[
-                      styles.fullScreenVideo, 
-                      { backgroundColor: '#000' },
-                      isLandscape && styles.fullScreenVideoLandscape
-                    ]}>
+                    <View style={[styles.fullScreenVideo, { backgroundColor: '#000' }]}>
                       <VideoView
-                        key={`video-fullscreen-${attachment.id || attachment.url}`}
+                        key={`video-fullscreen-${modalKey}-${modalOpeningKey}-${attachment.id || attachment.url}-${Date.now()}-${showFullScreen ? 'open' : 'closed'}`}
                         player={player}
-                        style={[
-                          styles.fullScreenVideo,
-                          isLandscape && styles.fullScreenVideoLandscape
-                        ]}
+                        style={styles.fullScreenVideo}
                         contentFit="contain"
                         nativeControls={true}
                         allowsFullscreen={true}
                       />
                       {/* Audio toggle button for full screen */}
                       <TouchableOpacity
-                        style={[
-                          styles.audioButton, 
-                          { position: 'absolute', top: 10, right: 10 },
-                          isLandscape && styles.audioButtonLandscape
-                        ]}
+                        style={[styles.audioButton, { position: 'absolute', top: 10, right: 10 }]}
                         onPress={toggleAudio}
                         activeOpacity={0.7}
                       >
@@ -714,31 +714,6 @@ function MediaViewerBase<T extends BaseAttachment>({
                           color="#fff" 
                         />
                       </TouchableOpacity>
-                      
-                      {/* Full-screen toggle button (only show when orientation control is enabled) */}
-                      {enableOrientationControl && (
-                        <TouchableOpacity
-                          style={[
-                            styles.fullScreenToggleButton,
-                            { position: 'absolute', top: 10, left: 10 },
-                            isLandscape && styles.fullScreenToggleButtonLandscape
-                          ]}
-                          onPress={() => {
-                            if (isLandscape) {
-                              unlockOrientation();
-                            } else {
-                              lockToLandscape();
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <MaterialIcons 
-                            name={isLandscape ? "fullscreen-exit" : "fullscreen"} 
-                            size={24} 
-                            color="#fff" 
-                          />
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ) : null;
                 })()}
@@ -747,11 +722,17 @@ function MediaViewerBase<T extends BaseAttachment>({
             
             {/* Original items */}
             {safeAttachments.map((attachment, index) => (
-              <View key={attachment.id || index} style={styles.fullScreenItem}>
+              <View key={attachment.id || index} style={[
+                styles.fullScreenItem,
+                safeAttachments.length === 1 && styles.singleItemContainer
+              ]}>
                 {attachment.type === "image" && (
                   <Image
                     source={{ uri: attachment.url }}
-                    style={styles.fullScreenImage}
+                    style={[
+                      styles.fullScreenImage,
+                      safeAttachments.length === 1 && styles.singleItemImage
+                    ]}
                     resizeMode="cover"
                   />
                 )}
@@ -775,14 +756,14 @@ function MediaViewerBase<T extends BaseAttachment>({
                     <View style={[
                       styles.fullScreenVideo, 
                       { backgroundColor: '#000' },
-                      isLandscape && styles.fullScreenVideoLandscape
+                      safeAttachments.length === 1 && styles.singleItemVideo
                     ]}>
                       <VideoView
-                        key={`video-fullscreen-${attachment.id || attachment.url}`}
+                        key={`video-fullscreen-${modalKey}-${modalOpeningKey}-${attachment.id || attachment.url}-${Date.now()}-${showFullScreen ? 'open' : 'closed'}`}
                         player={player}
                         style={[
                           styles.fullScreenVideo,
-                          isLandscape && styles.fullScreenVideoLandscape
+                          safeAttachments.length === 1 && styles.singleItemVideo
                         ]}
                         contentFit="contain"
                         nativeControls={true}
@@ -790,11 +771,7 @@ function MediaViewerBase<T extends BaseAttachment>({
                       />
                       {/* Audio toggle button for full screen */}
                       <TouchableOpacity
-                        style={[
-                          styles.audioButton, 
-                          { position: 'absolute', top: 10, right: 10 },
-                          isLandscape && styles.audioButtonLandscape
-                        ]}
+                        style={[styles.audioButton, { position: 'absolute', top: 10, right: 10 }]}
                         onPress={toggleAudio}
                         activeOpacity={0.7}
                       >
@@ -804,38 +781,13 @@ function MediaViewerBase<T extends BaseAttachment>({
                           color="#fff" 
                         />
                       </TouchableOpacity>
-                      
-                      {/* Full-screen toggle button (only show when orientation control is enabled) */}
-                      {enableOrientationControl && (
-                        <TouchableOpacity
-                          style={[
-                            styles.fullScreenToggleButton,
-                            { position: 'absolute', top: 10, left: 10 },
-                            isLandscape && styles.fullScreenToggleButtonLandscape
-                          ]}
-                          onPress={() => {
-                            if (isLandscape) {
-                              unlockOrientation();
-                            } else {
-                              lockToLandscape();
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <MaterialIcons 
-                            name={isLandscape ? "fullscreen-exit" : "fullscreen"} 
-                            size={24} 
-                            color="#fff" 
-                          />
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ) : null;
                 })()}
               </View>
             ))}
             
-            {/* Clone first item at the end */}
+            {/* Clone first item at the end - only for multiple items */}
             {safeAttachments.length > 1 && safeAttachments.slice(0, 1).map((attachment, _index) => (
               <View key={`clone-first-${attachment.id}`} style={styles.fullScreenItem}>
                 {attachment.type === "image" && (
@@ -862,29 +814,18 @@ function MediaViewerBase<T extends BaseAttachment>({
                   };
                   
                   return player ? (
-                    <View style={[
-                      styles.fullScreenVideo, 
-                      { backgroundColor: '#000' },
-                      isLandscape && styles.fullScreenVideoLandscape
-                    ]}>
+                    <View style={[styles.fullScreenVideo, { backgroundColor: '#000' }]}>
                       <VideoView
-                        key={`video-fullscreen-${attachment.id || attachment.url}`}
+                        key={`video-fullscreen-${modalKey}-${modalOpeningKey}-${attachment.id || attachment.url}-${Date.now()}-${showFullScreen ? 'open' : 'closed'}`}
                         player={player}
-                        style={[
-                          styles.fullScreenVideo,
-                          isLandscape && styles.fullScreenVideoLandscape
-                        ]}
+                        style={styles.fullScreenVideo}
                         contentFit="contain"
                         nativeControls={true}
                         allowsFullscreen={true}
                       />
                       {/* Audio toggle button for full screen */}
                       <TouchableOpacity
-                        style={[
-                          styles.audioButton, 
-                          { position: 'absolute', top: 10, right: 10 },
-                          isLandscape && styles.audioButtonLandscape
-                        ]}
+                        style={[styles.audioButton, { position: 'absolute', top: 10, right: 10 }]}
                         onPress={toggleAudio}
                         activeOpacity={0.7}
                       >
@@ -894,31 +835,6 @@ function MediaViewerBase<T extends BaseAttachment>({
                           color="#fff" 
                         />
                       </TouchableOpacity>
-                      
-                      {/* Full-screen toggle button (only show when orientation control is enabled) */}
-                      {enableOrientationControl && (
-                        <TouchableOpacity
-                          style={[
-                            styles.fullScreenToggleButton,
-                            { position: 'absolute', top: 10, left: 10 },
-                            isLandscape && styles.fullScreenToggleButtonLandscape
-                          ]}
-                          onPress={() => {
-                            if (isLandscape) {
-                              unlockOrientation();
-                            } else {
-                              lockToLandscape();
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <MaterialIcons 
-                            name={isLandscape ? "fullscreen-exit" : "fullscreen"} 
-                            size={24} 
-                            color="#fff" 
-                          />
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ) : null;
                 })()}
@@ -1059,10 +975,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 50,
     right: 20,
-    zIndex: 1000,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: 20,
-    padding: 8,
+    zIndex: 9999,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderRadius: 25,
+    padding: 12,
+    minWidth: 50,
+    minHeight: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   closeButtonLandscape: {
     top: 20,
@@ -1135,6 +1055,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+  },
+  fallbackCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: -1, // Ensure it's behind other content
+  },
+  singleItemContainer: {
+    width: screenWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  singleItemImage: {
+    width: screenWidth,
+    height: screenWidth,
+  },
+  singleItemVideo: {
+    width: screenWidth,
+    aspectRatio: 16/9,
+    backgroundColor: '#000',
   },
 }); 
 

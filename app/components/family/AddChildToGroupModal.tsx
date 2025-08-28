@@ -61,16 +61,7 @@ export default function AddChildToGroupModal({
       existingChild.id === childId || existingChild._id === childId
     );
     
-    // Debug log
-    if (isInGroup) {
-      console.log('Child already in group:', {
-        childId,
-        existingChildren: existingChildren.map((child: any) => ({
-          id: child.id || child._id,
-          name: child.name || child.firstName + ' ' + child.lastName
-        }))
-      });
-    }
+
     
     return isInGroup;
   };
@@ -196,19 +187,6 @@ export default function AddChildToGroupModal({
                 </View>
               ) : (
                 <>
-                  <Text style={styles.debugText}>
-                    Found {allChildren.length} children to display
-                  </Text>
-                  
-                  <Text style={styles.debugText}>
-                    Selected: {selectedChildIds.length} child{selectedChildIds.length !== 1 ? 'ren' : ''}
-                  </Text>
-                  
-                  {selectedChildIds.length > 0 && (
-                    <Text style={styles.debugText}>
-                      Selected IDs: {selectedChildIds.join(', ')}
-                    </Text>
-                  )}
 
                   {/* Select/Deselect All Button */}
                   <TouchableOpacity
@@ -235,15 +213,7 @@ export default function AddChildToGroupModal({
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Debug: Show first child info */}
-                  {allChildren.length > 0 && (
-                    <Text style={styles.debugText}>
-                      First child: {allChildren[0].name} -{" "}
-                      {allChildren[0].birthdate}
-                    </Text>
-                  )}
-
-                  {/* Simple list for debugging */}
+                  {/* Children list */}
                   <ScrollView 
                     style={styles.childrenList}
                     showsVerticalScrollIndicator={true}
@@ -449,12 +419,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
-  debugText: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 10,
-    textAlign: "center",
-  },
+
   simpleChildItem: {
     flexDirection: "row",
     justifyContent: "space-between",

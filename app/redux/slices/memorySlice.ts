@@ -81,6 +81,7 @@ interface MemoryState {
   memories: Memory[];
   currentMemory: Memory | null;
   loading: boolean;
+  updating: boolean; // Separate loading state for update operations
   error: string | null;
   total: number;
   page: number;
@@ -93,6 +94,7 @@ const initialState: MemoryState = {
   memories: [],
   currentMemory: null,
   loading: false,
+  updating: false, // Initialize updating state
   error: null,
   total: 0,
   page: 1,
@@ -204,44 +206,30 @@ const memorySlice = createSlice({
     // Update memory
     builder
       .addCase(updateMemory.pending, (state) => {
-        conditionalLog.memoryRedux('Redux updateMemory.pending');
-        state.loading = true;
+        state.updating = true; // Use updating instead of loading
         state.error = null;
       })
       .addCase(updateMemory.fulfilled, (state, action) => {
-        conditionalLog.memoryRedux('Redux updateMemory.fulfilled with payload:', action.payload);
-        state.loading = false;
+        state.updating = false; // Use updating instead of loading
         state.error = null;
-        
-        conditionalLog.memoryRedux('Current memories in state:', state.memories.map(m => ({ id: m.id, title: m.title })));
         
         const updatedMemory = action.payload;
         const index = state.memories.findIndex(memory => memory.id === updatedMemory.id);
-        conditionalLog.memoryRedux('Found memory at index:', index);
         
         if (index !== -1) {
-          conditionalLog.memoryRedux('Updating memory at index', index, 'from:', state.memories[index]);
-          conditionalLog.memoryRedux('Updating memory at index', index, 'to:', updatedMemory);
           state.memories[index] = updatedMemory;
-          conditionalLog.memoryRedux('Memory updated successfully');
         } else {
-          conditionalLog.memoryRedux('Memory not found in list for update. Memory ID:', updatedMemory.id);
-          conditionalLog.memoryRedux('Available memory IDs:', state.memories.map(m => m.id));
           // Add to list if not found (shouldn't happen but defensive programming)
           state.memories.unshift(updatedMemory);
         }
         
         // Update currentMemory if it's the same memory
         if (state.currentMemory && state.currentMemory.id === updatedMemory.id) {
-          conditionalLog.memoryRedux('Updating currentMemory as well');
           state.currentMemory = updatedMemory;
         }
-        
-        conditionalLog.memoryRedux('Final state after update:', state.memories.map(m => ({ id: m.id, title: m.title })));
       })
       .addCase(updateMemory.rejected, (state, action) => {
-        conditionalLog.memoryRedux('Redux updateMemory.rejected with error:', action.error);
-        state.loading = false;
+        state.updating = false; // Use updating instead of loading
         state.error = action.payload as string;
       });
 

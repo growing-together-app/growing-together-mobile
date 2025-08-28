@@ -26,7 +26,7 @@ interface TimelineItemProps {
   highlight?: boolean;
 }
 
-export default function TimelineItem({
+const TimelineItem = React.memo(({
   item,
   onPress,
   onEdit,
@@ -36,7 +36,7 @@ export default function TimelineItem({
   onVisibilityUpdate,
   isOwner = false,
   highlight = false,
-}: TimelineItemProps) {
+}: TimelineItemProps) => {
   const [showComments, setShowComments] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
@@ -356,7 +356,7 @@ export default function TimelineItem({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -481,3 +481,7 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
 });
+
+TimelineItem.displayName = 'TimelineItem';
+
+export default TimelineItem;

@@ -5,7 +5,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -288,7 +290,10 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
       presentationStyle="pageSheet"
       onRequestClose={handleCancel}
     >
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={styles.container}
+      >
         <View style={styles.header}>
           <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -311,7 +316,12 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+        >
           <View style={styles.formGroup}>
             <Text style={styles.label}>Title *</Text>
             <TextInput
@@ -320,6 +330,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               onChangeText={setTitle}
               placeholder="Enter memory title"
               maxLength={100}
+              returnKeyType="next"
             />
           </View>
 
@@ -333,6 +344,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               multiline
               numberOfLines={4}
               maxLength={500}
+              returnKeyType="next"
             />
           </View>
 
@@ -344,6 +356,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               onChangeText={setTags}
               placeholder="Enter tags separated by commas"
               maxLength={200}
+              returnKeyType="done"
             />
             <Text style={styles.helpText}>
               Example: first steps, birthday, milestone
@@ -352,11 +365,13 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
 
           {/* Only show visibility toggle for creator */}
           {isCreator && (
-            <VisibilityToggle
-              visibility={visibility}
-              onUpdate={async (newVisibility) => setVisibility(newVisibility)}
-              size="small"
-            />
+            <View style={styles.formGroup}>
+              <VisibilityToggle
+                visibility={visibility}
+                onUpdate={async (newVisibility) => setVisibility(newVisibility)}
+                size="small"
+              />
+            </View>
           )}
 
           {renderSelectedFiles()}
@@ -377,8 +392,11 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               You can add up to 5 photos or videos to your memory
             </Text>
           </View>
+          
+          {/* Add extra padding at bottom for better scrolling */}
+          <View style={styles.bottomPadding} />
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -425,6 +443,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
   },
   formGroup: {
@@ -511,5 +531,8 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bottomPadding: {
+    height: 100,
   },
 }); 

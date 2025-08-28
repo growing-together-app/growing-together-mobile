@@ -22,9 +22,10 @@ interface HealthContentProps {
   editingGrowthItem?: any; // Growth record to be edited from timeline
   onEditComplete?: () => void; // Callback to notify parent when edit is complete
   renderModalsOnly?: boolean; // If true, only render modals without UI content
+  skipDataFetch?: boolean; // If true, skip API calls for data fetching
 }
 
-const HealthContent: React.FC<HealthContentProps> = ({ childId, editingHealthItem, editingGrowthItem, onEditComplete, renderModalsOnly = false }) => {
+const HealthContent: React.FC<HealthContentProps> = ({ childId, editingHealthItem, editingGrowthItem, onEditComplete, renderModalsOnly = false, skipDataFetch = false }) => {
   const dispatch = useAppDispatch();
   
   // Get current user and children for permission checking
@@ -108,11 +109,11 @@ const HealthContent: React.FC<HealthContentProps> = ({ childId, editingHealthIte
 
   // Load health data for this child
   useEffect(() => {
-    if (childId) {
+    if (childId && !skipDataFetch) {
       dispatch(fetchHealthRecords({ childId, filter: healthFilter }));
       dispatch(fetchGrowthRecords({ childId, filter: growthFilter }));
     }
-  }, [childId, dispatch, healthFilter, growthFilter]);
+  }, [childId, dispatch, healthFilter, growthFilter, skipDataFetch]);
 
   // Handle editing items from timeline
   useEffect(() => {
@@ -157,8 +158,10 @@ const HealthContent: React.FC<HealthContentProps> = ({ childId, editingHealthIte
 
   // Fetch health data when component mounts or filter changes
   useEffect(() => {
-    fetchHealthData();
-  }, [fetchHealthData]);
+    if (!skipDataFetch) {
+      fetchHealthData();
+    }
+  }, [fetchHealthData, skipDataFetch]);
 
   // Handle growth record deletion
   const handleDeleteGrowthRecord = useCallback(async (recordId: string) => {

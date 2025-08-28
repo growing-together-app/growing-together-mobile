@@ -576,14 +576,7 @@ const EditHealthRecordModal: React.FC<EditHealthRecordModalProps> = ({
               style={styles.submitButton}
             />
             
-            {/* Debug form errors */}
-            {Object.keys(errors).length > 0 && (
-              <View style={{ marginTop: 10, padding: 10, backgroundColor: '#ffebee' }}>
-                <Text style={{ color: 'red', fontSize: 12 }}>
-                  Form errors: {JSON.stringify(errors)}
-                </Text>
-              </View>
-            )}
+
           </FormWrapper>
         </ScrollView>
 

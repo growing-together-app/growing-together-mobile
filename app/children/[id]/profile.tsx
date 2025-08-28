@@ -63,16 +63,26 @@ import {
 import { clearPrompts, fetchPrompts } from "../../redux/slices/promptSlice";
 import { Memory } from "../../services/memoryService";
 import { SearchResult, searchService } from "../../services/searchService";
-import { useFilteredContent } from "../../utils/contentPermissionUtils";
 
 type TabType = "timeline" | "health" | "qa" | "memories" | "profile";
 
 export default function ChildProfileScreen() {
-  const { id, focusPost, postType } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     id: string;
     focusPost?: string;
     postType?: string;
   }>();
+  
+  // Safety check for params with fallback
+  const id = params?.id || '';
+  const focusPost = params?.focusPost || '';
+  const postType = params?.postType || '';
+  
+  // Early return if no id
+  if (!id) {
+    console.log('⚠️ No child ID provided, returning early');
+    return null;
+  }
   const router = useRouter();
   const dispatch = useAppDispatch();
 
@@ -80,14 +90,15 @@ export default function ChildProfileScreen() {
     (state) => state.children
   );
   const {
-    memories,
+    memories = [],
     loading: memoriesLoading,
+    updating: memoriesUpdating,
     error: memoriesError,
     hasMore,
   } = useAppSelector((state) => state.memories);
-  const { responses } = useAppSelector((state) => state.promptResponses);
-  const { prompts } = useAppSelector((state) => state.prompts);
-  const { healthRecords, growthRecords } = useAppSelector(
+  const { responses = [] } = useAppSelector((state) => state.promptResponses);
+  const { prompts = [] } = useAppSelector((state) => state.prompts);
+  const { healthRecords = [], growthRecords = [] } = useAppSelector(
     (state) => state.health
   );
   const { currentUser } = useAppSelector((state) => state.user);
@@ -157,6 +168,22 @@ export default function ChildProfileScreen() {
   // Create timeline items and filter them based on permissions
   const timelineItems = React.useMemo(() => {
     if (!id) return [];
+    
+    // Safety check for required data with default empty arrays
+    const safeMemories = memories || [];
+    const safeResponses = responses || [];
+    const safeHealthRecords = healthRecords || [];
+    const safeGrowthRecords = growthRecords || [];
+    const safePrompts = prompts || [];
+    
+    // console.log('🔍 Timeline items data check:', {
+    //   id,
+    //   memoriesLength: safeMemories.length,
+    //   responsesLength: safeResponses.length,
+    //   healthRecordsLength: safeHealthRecords.length,
+    //   growthRecordsLength: safeGrowthRecords.length,
+    //   promptsLength: safePrompts.length
+    // });
 
 
 
@@ -164,7 +191,7 @@ export default function ChildProfileScreen() {
 
     // Add memories
     const processedMemoryIds = new Set();
-    memories.forEach((memory) => {
+    safeMemories.forEach((memory) => {
       if (!processedMemoryIds.has(memory.id)) {
         processedMemoryIds.add(memory.id);
 
@@ -201,7 +228,7 @@ export default function ChildProfileScreen() {
 
     // Add Q&A responses
     const processedResponseIds = new Set();
-    const filteredResponses = responses.filter((response) => response.childId === id);
+    const filteredResponses = safeResponses.filter((response) => response.childId === id);
     
         filteredResponses.forEach(async (response) => {
       if (!processedResponseIds.has(response.id)) {
@@ -214,11 +241,11 @@ export default function ChildProfileScreen() {
             (response.promptId as any).question ||
             (response.promptId as any).title ||
             "Question not available";
-        } else if (typeof response.promptId === "string") {
-          // First try to find in prompts array
-          const matchingPrompt = prompts.find(
-            (p: any) => p.id === response.promptId
-          );
+                  } else if (typeof response.promptId === "string") {
+            // First try to find in prompts array
+            const matchingPrompt = safePrompts.find(
+              (p: any) => p.id === response.promptId
+            );
           
                     if (matchingPrompt) {
             questionText =
@@ -259,7 +286,7 @@ export default function ChildProfileScreen() {
 
     // Add health records
     const processedHealthIds = new Set();
-    const filteredHealthRecords = healthRecords.filter((record) => record.childId === id);
+    const filteredHealthRecords = safeHealthRecords.filter((record) => record.childId === id);
     
     filteredHealthRecords.forEach((record) => {
         if (!processedHealthIds.has(record.id)) {
@@ -285,7 +312,7 @@ export default function ChildProfileScreen() {
 
     // Add growth records
     const processedGrowthIds = new Set();
-    const filteredGrowthRecords = growthRecords.filter((record) => record.childId === id);
+    const filteredGrowthRecords = safeGrowthRecords.filter((record) => record.childId === id);
     
     filteredGrowthRecords.forEach((record) => {
         if (!processedGrowthIds.has(record.id)) {
@@ -320,16 +347,32 @@ export default function ChildProfileScreen() {
     return sortedItems;
   }, [
     id,
-    memories,
-    responses,
-    healthRecords,
-    growthRecords,
-    prompts,
+    memories || [],
+    responses || [],
+    healthRecords || [],
+    growthRecords || [],
+    prompts || [],
     currentUser,
   ]);
 
   // Filter timeline items based on user permissions
-  const filteredTimelineItems = useFilteredContent(timelineItems);
+  // In child profile, owner should see ALL posts (both public and private)
+  const filteredTimelineItems = viewerIsOwner 
+    ? timelineItems // Owner sees all posts
+    : timelineItems; // Temporarily show all posts for now
+
+  // Debug filtered timeline items - temporarily commented out
+  // if (timelineItems && filteredTimelineItems) {
+  //   console.log('🔍 Filtered timeline items debug:', {
+  //     viewerIsOwner,
+  //     totalItems: timelineItems.length || 0,
+  //     filteredItems: filteredTimelineItems.length || 0,
+  //     publicItems: timelineItems.filter(item => item.visibility === 'public').length || 0,
+  //     privateItems: timelineItems.filter(item => item.visibility === 'private').length || 0,
+  //     memoryItems: timelineItems.filter(item => item.type === 'memory').length || 0,
+  //     qaItems: timelineItems.filter(item => item.type === 'qa').length || 0
+  //   });
+  // }
   
   // Handle focus post from notification - only when there's actually a focusPost
   useEffect(() => {
@@ -480,13 +523,7 @@ export default function ChildProfileScreen() {
   // }, [id, dispatch, growthFilter, healthFilter]);
 
   // Debug: Track when memories change
-  useEffect(() => {
-    // console.log('ChildProfile: Memories array changed:', {
-    //   count: memories.length,
-    //   firstMemory: memories[0] ? { id: memories[0].id, title: memories[0].title } : null,
-    //   lastUpdate: new Date().toISOString()
-    // });
-  }, [memories]);
+
 
   // Fetch child data when component mounts
   useEffect(() => {
@@ -501,7 +538,6 @@ export default function ChildProfileScreen() {
     setScrollRetryCount(0); // Reset retry count
 
     if (id) {
-
       dispatch(fetchChild(id));
       // Fetch memories for this child, newest first - increased limit to show more memories
       dispatch(
@@ -733,17 +769,22 @@ export default function ChildProfileScreen() {
       // Find the item type and update accordingly
       const memory = memories.find((m) => m.id === itemId);
       if (memory) {
+        // Update memory visibility without triggering API re-fetch
         await dispatch(
           updateMemory({ memoryId: itemId, data: { visibility } })
         ).unwrap();
+        
         return;
       }
 
       const response = responses.find((r) => r.id === itemId);
       if (response) {
+        console.log('❓ Found response, updating...');
         await dispatch(
           updateResponse({ responseId: itemId, data: { visibility } })
         ).unwrap();
+        console.log('✅ Response visibility updated successfully');
+        forceUpdate();
         return;
       }
 
@@ -752,6 +793,7 @@ export default function ChildProfileScreen() {
         await dispatch(
           updateHealthRecord({ recordId: itemId, data: { visibility } })
         ).unwrap();
+        forceUpdate();
         return;
       }
 
@@ -760,6 +802,7 @@ export default function ChildProfileScreen() {
         await dispatch(
           updateGrowthRecord({ recordId: itemId, data: { visibility } })
         ).unwrap();
+        forceUpdate();
         return;
       }
 
@@ -1814,7 +1857,7 @@ export default function ChildProfileScreen() {
 
   // Timeline content
   function renderTimelineContent() {
-    // Check if data is still loading
+    // Check if data is still loading (only for initial load, not updates)
     const isLoading = memoriesLoading || !id;
 
     if (isLoading) {
@@ -2071,6 +2114,7 @@ export default function ChildProfileScreen() {
           editingGrowthItem={editingGrowthItem}
           onEditComplete={handleHealthEditComplete}
           renderModalsOnly={true}
+          skipDataFetch={true} // Skip API calls when only rendering modals
         />
       </View>
     );
