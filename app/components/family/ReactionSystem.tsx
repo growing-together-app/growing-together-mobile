@@ -30,7 +30,7 @@ export default function ReactionSystem({
         <TouchableOpacity
           style={styles.defaultReactionButton}
           onPress={() => {
-            console.log("Default reaction pressed: like");
+        
             onReactionPress?.("like");
           }}
           onLongPress={() => {
@@ -65,7 +65,7 @@ export default function ReactionSystem({
                   key={reaction.type}
                   style={styles.reactionButton}
                   onPress={() => {
-                    console.log("Reaction pressed:", reaction.type);
+                
                     setShowReactionMenu(null);
                     onReactionPress?.(reaction.type);
                   }}

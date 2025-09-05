@@ -5,19 +5,21 @@ import {
   Alert,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSelector } from "react-redux";
 import { Colors } from "../constants/Colors";
 import { useThemeColor } from "../hooks/useThemeColor";
 import { RootState } from "../redux/store";
 import { commentService } from "../services/commentService";
+import KeyboardAwareView from "./ui/KeyboardAwareView";
 
 // Types
 interface User {
@@ -85,6 +87,13 @@ const CommentInput: React.FC<{
 
     setLoading(true);
     try {
+      console.log('Creating comment/reply:', {
+        content: content.trim(),
+        targetType,
+        targetId,
+        parentCommentId,
+      });
+      
       const newComment = await commentService.createComment({
         content: content.trim(),
         targetType: targetType as any,
@@ -92,12 +101,18 @@ const CommentInput: React.FC<{
         parentCommentId,
       });
 
+      console.log('Comment/reply created successfully:', newComment);
       setContent("");
       onCommentAdded(newComment);
       onCancel?.();
-    } catch (error) {
+      
+      // Success feedback - comment will be visible immediately
+    } catch (error: any) {
       console.error("Error creating comment:", error);
-      Alert.alert("Lỗi", "Không thể tạo bình luận. Vui lòng thử lại.");
+      Alert.alert(
+        "Lỗi", 
+        `Không thể tạo bình luận. ${error.message || 'Vui lòng thử lại.'}`
+      );
     } finally {
       setLoading(false);
     }
@@ -105,6 +120,17 @@ const CommentInput: React.FC<{
 
   return (
     <View style={styles.inputContainer}>
+      {parentCommentId && (
+        <View style={styles.replyHeader}>
+          <Text style={styles.replyLabel}>Trả lời bình luận</Text>
+          <TouchableOpacity
+            style={styles.addCommentButton}
+            onPress={onCancel}
+          >
+            <Text style={styles.addCommentButtonText}>+ Thêm bình luận</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <TextInput
         style={styles.input}
         value={content}
@@ -367,7 +393,8 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
         targetType,
         targetId,
         pageNum,
-        10
+        10,
+        5
       );
       // Handle nested response format from backend
       let newComments: Comment[] = [];
@@ -477,7 +504,11 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       <View style={styles.commentsList}>
         {useScrollView ? (
           <ScrollView
@@ -501,6 +532,7 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
             }}
             scrollEventThrottle={400}
             style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollViewContent}
           >
             {safeComments.length === 0 ? (
               renderEmptyState()
@@ -532,6 +564,7 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
             ListFooterComponent={renderFooter}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
+            contentContainerStyle={styles.flatListContent}
           />
         )}
       </View>
@@ -541,10 +574,23 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
           targetType={targetType}
           targetId={targetId}
           parentCommentId={replyingTo}
-          onCommentAdded={(newComment) => {
-            handleCommentAdded(newComment);
+          onCommentAdded={(newReply) => {
+            console.log('Reply added in CommentSystem:', newReply);
+            // Add the reply to the parent comment
+            setComments(prev => prev.map(comment => {
+              if (comment._id === replyingTo) {
+                const updatedComment = {
+                  ...comment,
+                  replies: [...(comment.replies || []), newReply]
+                };
+                console.log('Updated comment with reply in CommentSystem:', updatedComment);
+                return updatedComment;
+              }
+              return comment;
+            }));
             setShowReplyInput(false);
             setReplyingTo(null);
+            onCommentAdded?.(newReply);
           }}
           onCancel={() => {
             setShowReplyInput(false);
@@ -554,12 +600,15 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
         />
       )}
 
-      <CommentInput
-        targetType={targetType}
-        targetId={targetId}
-        onCommentAdded={handleCommentAdded}
-      />
-    </View>
+      {/* Main Comment Input - Only show when not replying */}
+      {!showReplyInput && (
+        <CommentInput
+          targetType={targetType}
+          targetId={targetId}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
+    </KeyboardAwareView>
   );
 };
 
@@ -572,11 +621,38 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     backgroundColor: "#f8f9fa",
   },
+  scrollViewContent: {
+    paddingBottom: 20,
+  },
+  flatListContent: {
+    paddingBottom: 20,
+  },
   inputContainer: {
     padding: 15,
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
     backgroundColor: "#fff",
+  },
+  replyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  replyLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  addCommentButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 4,
+  },
+  addCommentButtonText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+    fontWeight: "500",
   },
   input: {
     borderWidth: 1,

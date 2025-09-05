@@ -92,3 +92,26 @@ export function formatRelativeTime(dateString: string): string {
     return 'Invalid Date';
   }
 } 
+
+/**
+ * Safely converts a date string to ISO date format
+ * @param dateString - The date string to convert
+ * @param fallback - Optional fallback date (defaults to current date)
+ * @returns ISO date string (YYYY-MM-DD) or fallback
+ */
+export function safeDate(dateString: string | Date | null | undefined, fallback?: string): string {
+  try {
+    if (!dateString) {
+      return fallback || new Date().toISOString().split("T")[0];
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return fallback || new Date().toISOString().split("T")[0];
+    }
+    
+    return date.toISOString().split("T")[0];
+  } catch {
+    return fallback || new Date().toISOString().split("T")[0];
+  }
+} 

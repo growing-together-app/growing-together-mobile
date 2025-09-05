@@ -1,18 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { deleteResponse, fetchChildResponses } from '../../redux/slices/promptResponseSlice';
 import { fetchPrompts } from '../../redux/slices/promptSlice';
 import { Prompt } from '../../services/promptService';
+import AddButton from '../ui/AddButton';
 import ErrorView from '../ui/ErrorView';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import AddResponseModal from './AddResponseModal';
@@ -184,7 +185,7 @@ export default function QAContent({ childId, useScrollView = false, editingItem 
 
   const handleLoadMore = () => {
     setVisibleCardsCount(prev => prev + 3); // Load 3 more cards
-    console.log('QAContent: Loading more cards, new count:', visibleCardsCount + 3);
+
   };
 
   // Debounce mechanism for loadMoreData
@@ -232,14 +233,13 @@ export default function QAContent({ childId, useScrollView = false, editingItem 
       
       case 'ask-button':
         return (
-          <TouchableOpacity
-            style={styles.askButton}
+          <AddButton
+            title="Ask Child"
             onPress={handleAskChild}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="add" size={20} color="#fff" />
-            <Text style={styles.askButtonText}>Ask Your Child</Text>
-          </TouchableOpacity>
+            variant="secondary"
+            iconSize={18}
+            style={{ alignSelf: 'center', marginHorizontal: 20 }}
+          />
         );
       
       case 'qa-card':
@@ -297,10 +297,7 @@ export default function QAContent({ childId, useScrollView = false, editingItem 
     { type: 'ask-button' },
   ];
 
-  console.log('QAContent: Current prompts count:', prompts.length);
-  console.log('QAContent: Current responses count:', responses.length);
-  console.log('QAContent: Prompts:', prompts.map(p => ({ id: p.id, content: p.content })));
-  console.log('QAContent: Responses:', responses.map(r => ({ id: r.id, promptId: r.promptId, content: r.content })));
+  
 
   // Collect all Q&A cards with duplicate prevention
   const qaCards: ListItem[] = [];
@@ -565,24 +562,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  askButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007bff',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    alignSelf: 'center',
-  },
-  askButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
+
   loadMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',

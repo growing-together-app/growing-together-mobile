@@ -65,7 +65,12 @@ class CommentService {
 
   async createComment(data: CreateCommentData): Promise<Comment> {
     try {
+      console.log('=== COMMENT SERVICE: Creating comment ===');
+      console.log('Request data:', data);
+      
       const response = await apiService.post('/comments', data) as any;
+      
+      console.log('API response:', response);
       
       // Handle nested response format from backend
       let commentData: Comment;
@@ -83,9 +88,15 @@ class CommentService {
         throw new Error(response.message || 'Failed to create comment');
       }
       
+      console.log('Extracted comment data:', commentData);
+      console.log('=== COMMENT SERVICE: Comment created successfully ===');
+      
       return commentData;
     } catch (error: any) {
-      console.error('Error creating comment:', error);
+      console.error('=== COMMENT SERVICE: Error creating comment ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
       throw error;
     }
   }
@@ -94,22 +105,28 @@ class CommentService {
     targetType: string,
     targetId: string,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    maxDepth: number = 5
   ): Promise<CommentsResponse> {
     try {
+      console.log('=== COMMENT SERVICE: Fetching comments ===');
+      console.log('Request params:', { targetType, targetId, page, limit, maxDepth });
+      
       const response = await apiService.get(
-        `/comments?targetType=${targetType}&targetId=${targetId}&page=${page}&limit=${limit}`
+        `/comments?targetType=${targetType}&targetId=${targetId}&page=${page}&limit=${limit}&maxDepth=${maxDepth}`
       ) as CommentsResponse;
       
-
+      console.log('API response:', response);
       
       if (response.success) {
+        console.log('Comments fetched successfully:', response.data?.length || 0);
         return response;
       } else {
         throw new Error(response.message || 'Failed to fetch comments');
       }
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      console.error('=== COMMENT SERVICE: Error fetching comments ===');
+      console.error('Error details:', error);
       throw error;
     }
   }

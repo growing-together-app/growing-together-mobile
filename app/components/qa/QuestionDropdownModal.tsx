@@ -84,10 +84,7 @@ export default function QuestionDropdownModal({
               <Text style={dropdownStyles.itemText}>
                 {item.title || item.content || 'No content available'}
               </Text>
-              {/* Debug: Show item details */}
-              <Text style={dropdownStyles.debugText}>
-                Debug: Title=&quot;{item.title}&quot;, Content=&quot;{item.content}&quot;
-              </Text>
+
             </TouchableOpacity>
           )}
           onEndReached={loadMore}
@@ -121,12 +118,7 @@ const dropdownStyles = StyleSheet.create({
   itemText: { fontSize: 16 },
   cancelButton: { marginTop: 20 },
   cancelText: { color: '#007AFF', fontSize: 16, textAlign: 'center' },
-  debugText: { 
-    color: '#999', 
-    fontSize: 10, 
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
+
 });
 
 

@@ -6,18 +6,20 @@ import {
   FlatList,
   Image,
   Modal,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Colors } from '../constants/Colors';
 import { refreshNotificationCount } from '../redux/slices/notificationSlice';
 import { RootState } from '../redux/store';
 import { commentService } from '../services/commentService';
+import KeyboardAwareView from './ui/KeyboardAwareView';
 
 // Types
 interface User {
@@ -61,10 +63,28 @@ const CommentItem: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [loading, setLoading] = useState(false);
-  const [showReplies, setShowReplies] = useState(false);
+  const [showReplies, setShowReplies] = useState(level === 0); // Auto-expand first level, collapse deeper levels
+  
+  // Auto-expand when new replies are added
+  useEffect(() => {
+    if (comment.replies && comment.replies.length > 0) {
+      // Auto-expand for main comments (level 0) or when new replies are added
+      if (level === 0) {
+        setShowReplies(true);
+      }
+    }
+  }, [comment.replies?.length, level]);
 
   const handleReply = () => {
+    // Auto-expand replies when user wants to reply
+    if (!showReplies && comment.replies && comment.replies.length > 0) {
+      setShowReplies(true);
+    }
     onReply(comment._id);
+  };
+
+  const toggleReplies = () => {
+    setShowReplies(!showReplies);
   };
 
   const handleEdit = async () => {
@@ -131,9 +151,14 @@ const CommentItem: React.FC<{
 
   const isOwner = comment.user?._id === currentUserId;
   const hasReplies = comment.replies && comment.replies.length > 0;
+  
 
+  // Limit maximum nesting depth to prevent layout issues
+  const maxDepth = 5;
+  const effectiveLevel = Math.min(level, maxDepth);
+  
   return (
-    <View style={[styles.commentContainer, { marginLeft: level * 20 }]}>
+    <View style={[styles.commentContainer, { marginLeft: effectiveLevel * 15 }]}>
       <View style={styles.commentHeader}>
         <View style={styles.avatarContainer}>
           {comment.user?.avatar ? (
@@ -219,28 +244,39 @@ const CommentItem: React.FC<{
       </View>
 
       {hasReplies && (
-        <View style={styles.repliesContainer}>
-          {showReplies ? (
-            comment.replies?.map((reply, index) => (
-              <CommentItem
-                key={`${reply._id}-${index}`}
-                comment={reply}
-                currentUserId={currentUserId}
-                onReply={onReply}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                level={level + 1}
-              />
-            ))
-          ) : (
-            <TouchableOpacity
-              style={styles.viewRepliesButton}
-              onPress={() => setShowReplies(true)}
-            >
-              <Text style={styles.viewRepliesText}>
-                Xem {comment.replies?.length} phản hồi
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.repliesSection}>
+          {/* View Replies Button */}
+          <TouchableOpacity 
+            style={styles.viewRepliesButton} 
+            onPress={toggleReplies}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons 
+              name={showReplies ? "chevron-up" : "chevron-down"} 
+              size={16} 
+              color="#1877f2" 
+            />
+            <Text style={styles.viewRepliesText}>
+              {showReplies ? 'Ẩn' : 'Xem'} {comment.replies?.length || 0} {comment.replies?.length === 1 ? 'trả lời' : 'trả lời'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Replies Container */}
+          {showReplies && (
+            <View style={[styles.repliesContainer, { maxWidth: '100%' }]}>
+              {comment.replies?.map((reply, index) => (
+                <CommentItem
+                  key={`${reply._id}-${index}`}
+                  comment={reply}
+                  currentUserId={currentUserId}
+                  onReply={onReply}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  level={effectiveLevel + 1}
+                />
+              ))}
+            </View>
           )}
         </View>
       )}
@@ -277,7 +313,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
 
     setLoading(true);
     try {
-      const response = await commentService.getComments(targetType, targetId, pageNum, 10);
+      const response = await commentService.getComments(targetType, targetId, pageNum, 10, 5);
       
       // Handle nested response format from backend
       let newComments: Comment[] = [];
@@ -372,6 +408,8 @@ const CommentModal: React.FC<CommentModalProps> = ({
       setNewComment('');
       handleCommentAdded(comment);
       
+      // Success feedback - comment will be visible immediately
+      
       // Refresh notification count after adding comment
       setTimeout(() => {
         dispatch(refreshNotificationCount());
@@ -385,35 +423,81 @@ const CommentModal: React.FC<CommentModalProps> = ({
   };
 
   const handleSubmitReply = async () => {
-    if (!replyComment.trim() || submitting || !replyingTo) return;
+    if (!replyComment.trim() || submitting || !replyingTo) {
+      return;
+    }
+    
     setSubmitting(true);
     try {
-      const comment = await commentService.createComment({
+      const reply = await commentService.createComment({
         content: replyComment.trim(),
         targetType: targetType as any,
         targetId,
         parentCommentId: replyingTo,
       });
+      
+      // Store replyingTo before clearing it
+      const currentReplyingTo = replyingTo;
+      
+      // Add the new reply to the existing comment in state first
+      const updateCommentWithReply = (comments: Comment[], targetId: string, newReply: Comment): Comment[] => {
+        return comments.map(comment => {
+          if (comment._id === targetId) {
+            // Found the target comment
+            const updatedReplies = [...(comment.replies || []), newReply];
+            // Sort replies by creation time (newest first)
+            updatedReplies.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            return {
+              ...comment,
+              replies: updatedReplies
+            };
+          } else if (comment.replies && comment.replies.length > 0) {
+            // Search in nested replies
+            return {
+              ...comment,
+              replies: updateCommentWithReply(comment.replies, targetId, newReply)
+            };
+          }
+          return comment;
+        });
+      };
+
+      setComments(prev => {
+        const updatedComments = updateCommentWithReply(prev, currentReplyingTo, reply);
+        
+        // Force re-render to ensure new reply is visible
+        setTimeout(() => {
+          // This will trigger a re-render and show the new reply
+        }, 100);
+        
+        return updatedComments;
+      });
+      
+      // Clear reply input and close reply input after state update
       setReplyComment('');
-      // Add the new reply to the existing comment
-      setComments(prev => prev.map(c => {
-        if (c._id === replyingTo) {
-          return {
-            ...c,
-            replies: [...(c.replies || []), comment]
-          };
-        }
-        return c;
-      }));
       setShowReplyInput(false);
       setReplyingTo(null);
+      
+      // Notify parent component about the new reply
+      onCommentAdded?.(reply);
       
       // Refresh notification count after adding reply
       setTimeout(() => {
         dispatch(refreshNotificationCount());
       }, 1000);
+      
+      // Success feedback - comment will be visible immediately
+      
+      // Visual feedback - briefly highlight the new reply
+      setTimeout(() => {
+        // This will be handled by the UI state update
+      }, 100);
     } catch (error: any) {
-      Alert.alert('Lỗi', 'Không thể tạo bình luận. Vui lòng thử lại.');
+      console.error('Error creating reply:', error);
+      Alert.alert(
+        'Lỗi', 
+        `Không thể tạo bình luận. ${error.message || 'Vui lòng thử lại.'}`
+      );
     } finally {
       setSubmitting(false);
     }
@@ -426,6 +510,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       onReply={handleReply}
       onEdit={handleCommentEdited}
       onDelete={handleCommentDeleted}
+      level={0}
     />
   );
 
@@ -456,7 +541,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <KeyboardAwareView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -478,7 +567,6 @@ const CommentModal: React.FC<CommentModalProps> = ({
               Bình luận ({comments.length})
             </Text>
           </TouchableOpacity>
-          <View style={styles.headerSpacer} />
         </View>
 
         {/* Comments List */}
@@ -508,6 +596,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               ListFooterComponent={renderFooter}
               showsVerticalScrollIndicator={false}
               scrollEnabled={true}
+              contentContainerStyle={styles.flatListContent}
             />
           </TouchableOpacity>
         </View>
@@ -515,7 +604,21 @@ const CommentModal: React.FC<CommentModalProps> = ({
         {/* Reply Input */}
         {showReplyInput && replyingTo && (
           <View style={styles.replyInputContainer}>
-            <Text style={styles.replyLabel}>Trả lời bình luận</Text>
+            <View style={styles.replyHeader}>
+              <Text style={styles.replyLabel}>Trả lời bình luận</Text>
+              <View style={styles.replyHeaderActions}>
+                <TouchableOpacity
+                  style={styles.addCommentButton}
+                  onPress={() => {
+                    setShowReplyInput(false);
+                    setReplyingTo(null);
+                    setReplyComment('');
+                  }}
+                >
+                  <Text style={styles.addCommentButtonText}>+ Thêm bình luận</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
             <View style={styles.replyInputRow}>
               <TextInput
                 style={styles.replyInput}
@@ -525,14 +628,6 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 placeholderTextColor="#999"
                 multiline
                 maxLength={1000}
-                onBlur={() => {
-                  // Auto-hide reply input when user taps outside
-                  setTimeout(() => {
-                    setShowReplyInput(false);
-                    setReplyingTo(null);
-                    setReplyComment('');
-                  }, 100);
-                }}
               />
               <TouchableOpacity
                 style={[styles.replySubmitButton, (!replyComment.trim() || submitting) && styles.replySubmitButtonDisabled]}
@@ -546,35 +641,38 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 )}
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.cancelReplyButton}
-              onPress={() => {
-                setShowReplyInput(false);
-                setReplyingTo(null);
-                setReplyComment('');
-              }}
-            >
-              <Text style={styles.cancelReplyButtonText}>Hủy</Text>
-            </TouchableOpacity>
+            <View style={styles.replyActions}>
+              <TouchableOpacity
+                style={styles.cancelReplyButton}
+                onPress={() => {
+                  setShowReplyInput(false);
+                  setReplyingTo(null);
+                  setReplyComment('');
+                }}
+              >
+                <Text style={styles.cancelReplyButtonText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* Main Comment Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputRow}>
-            <View style={styles.userAvatarContainer}>
-              {(currentUser as any)?.avatar ? (
-                <Image source={{ uri: (currentUser as any).avatar }} style={styles.userAvatar} />
-              ) : (
-                <View style={styles.defaultUserAvatar}>
-                  <Text style={styles.defaultUserAvatarText}>
-                    {(currentUser as any)?.firstName?.charAt(0) || 'U'}
-                  </Text>
-                </View>
-              )}
-            </View>
-            
-            <View style={styles.inputWrapper}>
+        {/* Main Comment Input - Only show when not replying */}
+        {!showReplyInput && (
+          <View style={styles.inputContainer}>
+            <View style={styles.inputRow}>
+              <View style={styles.userAvatarContainer}>
+                {(currentUser as any)?.avatar ? (
+                  <Image source={{ uri: (currentUser as any).avatar }} style={styles.userAvatar} />
+                ) : (
+                  <View style={styles.defaultUserAvatar}>
+                    <Text style={styles.defaultUserAvatarText}>
+                      {(currentUser as any)?.firstName?.charAt(0) || 'U'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+                          <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.mainInput}
                 value={newComment}
@@ -586,20 +684,22 @@ const CommentModal: React.FC<CommentModalProps> = ({
               />
             </View>
             
-            <TouchableOpacity
-              style={[styles.submitButton, (!newComment.trim() || submitting) && styles.submitButtonDisabled]}
-              onPress={handleSubmitComment}
-              disabled={!newComment.trim() || submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="send" size={16} color="#fff" />
-              )}
-            </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.submitButton, (!newComment.trim() || submitting) && styles.submitButtonDisabled]}
+                onPress={handleSubmitComment}
+                disabled={!newComment.trim() || submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </View>
+        )}
+      </KeyboardAwareView>
     </Modal>
   );
 };
@@ -634,11 +734,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  flatListContent: {
+    paddingBottom: 20,
+  },
   commentContainer: {
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
+    minWidth: 0, // Prevent text wrapping issues
+    flex: 1, // Allow flexible width
   },
   commentHeader: {
     flexDirection: 'row',
@@ -667,6 +772,8 @@ const styles = StyleSheet.create({
   },
   commentInfo: {
     flex: 1,
+    minWidth: 0, // Prevent text wrapping issues
+    flexShrink: 1, // Allow content to shrink if needed
   },
   userNameRow: {
     flexDirection: 'row',
@@ -677,6 +784,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    flexShrink: 1, // Allow text to shrink if needed
+    flexWrap: 'wrap', // Allow text to wrap properly
   },
   verifiedBadge: {
     marginLeft: 4,
@@ -690,6 +799,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
     color: '#333',
+    flexWrap: 'wrap', // Allow text to wrap properly
+    flexShrink: 1, // Allow text to shrink if needed
   },
   commentActions: {
     flexDirection: 'row',
@@ -744,16 +855,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  repliesContainer: {
+  repliesSection: {
     marginTop: 8,
   },
   viewRepliesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    borderRadius: 6,
+    backgroundColor: '#f8f9fa',
+    minHeight: 32,
+    // Ensure button is clickable
+    zIndex: 1,
   },
   viewRepliesText: {
     fontSize: 12,
     color: '#1877f2',
     fontWeight: '500',
+    marginLeft: 4,
+  },
+  repliesContainer: {
+    marginLeft: 15,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e0e0e0',
+    paddingLeft: 8,
+    minWidth: 0, // Prevent text wrapping issues
   },
   replyInputContainer: {
     padding: 15,
@@ -761,10 +889,31 @@ const styles = StyleSheet.create({
     borderTopColor: '#e0e0e0',
     backgroundColor: '#fff',
   },
+  replyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  replyHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   replyLabel: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 8,
+  },
+  addCommentButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+  },
+  addCommentButtonText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+    fontWeight: '500',
   },
   replyInputRow: {
     flexDirection: 'row',
@@ -790,11 +939,15 @@ const styles = StyleSheet.create({
   replySubmitButtonDisabled: {
     backgroundColor: '#ccc',
   },
+  replyActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
   cancelReplyButton: {
-    alignSelf: 'flex-end',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginTop: 8,
   },
   cancelReplyButtonText: {
     fontSize: 14,
