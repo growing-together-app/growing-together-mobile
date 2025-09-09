@@ -145,6 +145,15 @@ class NotificationService {
       const response = await apiService.get(
         `/notifications?page=${page}&limit=${limit}`
       );
+      // Handle nested response format: { success: true, data: { data: [...], pagination: {...} } }
+      if (response.data?.data?.data) {
+        return {
+          success: response.data.success,
+          message: response.data.message,
+          data: response.data.data.data,
+          pagination: response.data.data.pagination
+        };
+      }
       return response.data;
     } catch (error: any) {
       // API error handled silently
@@ -174,6 +183,14 @@ class NotificationService {
   async getUnreadCount(): Promise<UnreadCountResponse> {
     try {
       const response = await apiService.get("/notifications/unread-count");
+      // Handle nested response format: { success: true, data: { unreadCount: 0 } }
+      if (response.data?.data?.unreadCount !== undefined) {
+        return {
+          success: response.data.success,
+          message: response.data.message,
+          data: { unreadCount: response.data.data.unreadCount }
+        };
+      }
       return response.data;
     } catch (error: any) {
       // API error handled silently
@@ -202,6 +219,13 @@ class NotificationService {
       const response = await apiService.post(
         `/notifications/${sanitizedId}/mark-read`
       );
+      // Handle nested response format: { success: true, data: { _id, isRead, updatedAt } }
+      if (response.data?.data) {
+        return {
+          success: response.data.success,
+          data: response.data.data
+        };
+      }
       return response.data;
     } catch (error) {
       // API error handled silently
@@ -215,6 +239,14 @@ class NotificationService {
   async markAllAsRead(): Promise<MarkAllReadResponse> {
     try {
       const response = await apiService.post("/notifications/mark-all-read");
+      // Handle nested response format: { success: true, message: "...", data: { modifiedCount: 0 } }
+      if (response.data?.data) {
+        return {
+          success: response.data.success,
+          message: response.data.message,
+          data: response.data.data
+        };
+      }
       return response.data;
     } catch (error) {
       // API error handled silently
@@ -233,6 +265,14 @@ class NotificationService {
       const response = await apiService.delete(
         `/notifications/${sanitizedId}`
       );
+      // Handle nested response format: { success: true, message: "...", data: { _id, isDeleted } }
+      if (response.data?.data) {
+        return {
+          success: response.data.success,
+          message: response.data.message,
+          data: response.data.data
+        };
+      }
       return response.data;
     } catch (error) {
       // API error handled silently

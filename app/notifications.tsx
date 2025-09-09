@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@env';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,7 +7,7 @@ import AppHeader from './components/layout/AppHeader';
 import ScreenWithFooter from './components/layout/ScreenWithFooter';
 import NotificationList from './components/notification/NotificationList';
 import { useThemeColor } from './hooks/useThemeColor';
-import { fetchNotifications, fetchUnreadCount, markAllNotificationsAsRead, markNotificationAsRead } from './redux/slices/notificationSlice';
+import { fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './redux/slices/notificationSlice';
 import { RootState } from './redux/store';
 import authService from './services/authService';
 import NotificationNavigationService from './services/notificationNavigationService';
@@ -25,9 +25,19 @@ export default function NotificationsScreen() {
   const primaryColor = useThemeColor({}, 'primary');
 
   useEffect(() => {
-    dispatch(fetchUnreadCount() as any);
+    // Only fetch notifications, unreadCount is handled by NotificationBadge polling
     dispatch(fetchNotifications({ page: 1, limit: 20 }) as any);
   }, [dispatch]);
+
+  // Refresh notifications when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        // Only fetch notifications, unreadCount is handled by NotificationBadge polling
+        dispatch(fetchNotifications({ page: 1, limit: 20 }) as any);
+      }
+    }, [dispatch, isAuthenticated])
+  );
 
   useEffect(() => {
     const loadToken = async () => {

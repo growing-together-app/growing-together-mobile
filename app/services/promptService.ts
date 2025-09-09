@@ -43,7 +43,14 @@ export interface PromptResponse {
   id: string;
   promptId: string;
   childId: string;
-  parentId: string;
+  parentId?: string | { // Can be string or object with user info (from authorId or parentId)
+    _id: string;
+    id: string;
+    firstName: string;
+    lastName?: string;
+    avatar?: string;
+    name?: string;
+  };
   content: string;
   attachments?: PromptResponseAttachment[];
   visibility?: 'private' | 'public';

@@ -2,8 +2,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { commentService } from "../../services/commentService";
-import CommentModal from "../CommentModal";
-import CommentSystem from "../CommentSystem";
+import CommentSystem, { CommentModal } from "../CommentSystem";
 import MediaViewerBase from "../media/MediaViewerBase";
 import { DeleteButton, EditButton } from "../ui/EditDeleteButtons";
 import ReactionBar from "../ui/ReactionBar";
@@ -26,7 +25,7 @@ interface TimelineItemProps {
   highlight?: boolean;
 }
 
-export default function TimelineItem({
+const TimelineItem = React.memo(({
   item,
   onPress,
   onEdit,
@@ -36,7 +35,7 @@ export default function TimelineItem({
   onVisibilityUpdate,
   isOwner = false,
   highlight = false,
-}: TimelineItemProps) {
+}: TimelineItemProps) => {
   const [showComments, setShowComments] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
@@ -45,8 +44,10 @@ export default function TimelineItem({
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const borderAnimation = useRef(new Animated.Value(0)).current;
 
+
+
   const getItemType = () => {
-    switch (item.type) {
+    switch (item?.type) {
       case "memory":
         return "Memory";
       case "qa":
@@ -61,7 +62,7 @@ export default function TimelineItem({
   };
 
   const getItemTypeForComment = () => {
-    switch (item.type) {
+    switch (item?.type) {
       case "memory":
         return "memory";
       case "qa":
@@ -76,7 +77,7 @@ export default function TimelineItem({
   };
 
   const getItemIcon = () => {
-    switch (item.type) {
+    switch (item?.type) {
       case "memory":
         return "photo";
       case "qa":
@@ -91,7 +92,7 @@ export default function TimelineItem({
   };
 
   const getItemColor = () => {
-    switch (item.type) {
+    switch (item?.type) {
       case "memory":
         return "#4f8cff";
       case "qa":
@@ -119,13 +120,22 @@ export default function TimelineItem({
     }
   };
 
-  const handleCommentPress = () => {
-    setShowCommentModal(true);
-    onComment?.();
-  };
-
   // Fetch comment count - memoized to prevent unnecessary API calls
-  const targetType = useMemo(() => getItemTypeForComment(), [item?.type]);
+  const targetType = useMemo(() => {
+    if (!item) return "memory";
+    switch (item.type) {
+      case "memory":
+        return "memory";
+      case "qa":
+        return "promptResponse";
+      case "health":
+        return "healthRecord";
+      case "growth":
+        return "growthRecord";
+      default:
+        return "memory";
+    }
+  }, [item]);
   
   useEffect(() => {
     if (!item?.id) return;
@@ -197,7 +207,17 @@ export default function TimelineItem({
         }),
       ]).start();
     }
-  }, [highlight]); // Remove highlightAnimation and borderAnimation from dependencies
+  }, [highlight, highlightAnimation, borderAnimation]);
+
+  const handleCommentPress = () => {
+    setShowCommentModal(true);
+    onComment?.();
+  };
+
+  // Early return if item is not provided
+  if (!item) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -226,7 +246,7 @@ export default function TimelineItem({
       <View style={styles.header}>
         <View style={styles.typeBadge}>
           <MaterialIcons name={getItemIcon() as any} size={16} color="#fff" />
-          <Text style={styles.typeText}>{item.type.toUpperCase()}</Text>
+          <Text style={styles.typeText}>{item.type?.toUpperCase() || 'UNKNOWN'}</Text>
         </View>
         <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
       </View>
@@ -241,10 +261,10 @@ export default function TimelineItem({
         {item.content && <Text style={styles.description}>{item.content}</Text>}
 
         {/* Media */}
-        {item.media && item.media.length > 0 && (
+        {(item.media || item.attachments) && (item.media?.length > 0 || item.attachments?.length > 0) && (
           <View style={styles.mediaContainer}>
             <MediaViewerBase
-              attachments={item.media}
+              attachments={item.media || item.attachments || []}
               maxPreviewCount={3}
               onAttachmentPress={(attachment: any, index: number) => {
                 // console.log(
@@ -314,18 +334,22 @@ export default function TimelineItem({
         </View>
       </View>
 
-      {/* Comments Section */}
+      {/* Comments Section - Inline mode with better keyboard handling */}
       {showComments && (
         <View style={styles.commentsSection}>
           <CommentSystem
             targetType={getItemTypeForComment()}
             targetId={item.id}
+            mode="inline"
+            maxHeight={500} // Increased from 400 to give more space
             useScrollView={true}
             onCommentAdded={(comment) => {
               // Comment added successfully
+              setCommentCount(prev => prev + 1);
             }}
             onCommentDeleted={(commentId) => {
               // Comment deleted successfully
+              setCommentCount(prev => Math.max(0, prev - 1));
             }}
             onCommentEdited={(comment) => {
               // Comment edited successfully
@@ -334,7 +358,7 @@ export default function TimelineItem({
         </View>
       )}
 
-      {/* Comment Modal */}
+      {/* Comment Modal - Full screen mode */}
       {item?.id && (
         <CommentModal
           visible={showCommentModal}
@@ -356,7 +380,7 @@ export default function TimelineItem({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -478,6 +502,10 @@ const styles = StyleSheet.create({
   commentsSection: {
     borderTopWidth: 1,
     borderTopColor: "#f0f0f0",
-    maxHeight: 400,
+    // Remove maxHeight constraint - let CommentSystem handle it
   },
 });
+
+TimelineItem.displayName = 'TimelineItem';
+
+export default TimelineItem;

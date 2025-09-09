@@ -1,25 +1,49 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import CommentSystem from '../CommentSystem';
+import CommentSystem, { CommentModal } from '../CommentSystem';
 import MediaViewerBase from '../media/MediaViewerBase';
 // import ReactionSystem from './ReactionSystem';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { updateMemory } from '../../redux/slices/memorySlice';
 import { commentService } from '../../services/commentService';
 import type { TargetType } from '../../services/reactionService';
-import CommentModal from '../CommentModal';
 import ReactionBar from '../ui/ReactionBar';
+import VisibilityToggle from '../ui/VisibilityToggle';
 
 interface TimelinePostProps {
   post: any;
   onReactionPress?: (reactionType: string) => void;
   onCommentPress?: () => void;
+  onVisibilityUpdate?: (postId: string, visibility: 'private' | 'public') => void;
 }
 
-export default function TimelinePost({ post, onReactionPress, onCommentPress }: TimelinePostProps) {
+export default function TimelinePost({ post, onReactionPress, onCommentPress, onVisibilityUpdate }: TimelinePostProps) {
   const [showComments, setShowComments] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
-  const contentType = (post.contentType || 'memory');
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const { children } = useAppSelector((state) => state.children);
+  
+  // Debug logging for post data
+  useEffect(() => {
+    console.log('📝 TimelinePost rendering:', {
+      postId: post?._id || post?.id,
+      contentType: post?.contentType || 'unknown',
+      childName: post?.child?.nickname || post?.child?.firstName,
+      visibility: post?.visibility || 'unknown',
+      hasChild: !!post?.child,
+      hasContent: !!post?.content || !!post?.text || !!post?.title,
+      // Debug memory post structure
+      postKeys: post ? Object.keys(post) : [],
+      childKeys: post?.child ? Object.keys(post.child) : [],
+      childId: post?.childId,
+      parentId: post?.parentId
+    });
+  }, [post]);
+
+  const contentType = post?.contentType || 'memory';
   
   const safeText = (text: any) => {
     if (typeof text === 'string') return text;
@@ -210,6 +234,72 @@ export default function TimelinePost({ post, onReactionPress, onCommentPress }: 
     fetchCommentCount();
   }, [post?._id, post?.id, contentType]);
 
+  // Check if current user is the owner of the child (for memory posts)
+  const getChildId = (childId: any) => {
+    if (typeof childId === 'string') return childId;
+    if (childId && typeof childId === 'object' && childId._id) return childId._id;
+    if (childId && typeof childId === 'object' && childId.id) return childId.id;
+    return null;
+  };
+  
+  const getParentId = (parentId: any) => {
+    if (typeof parentId === 'string') return parentId;
+    if (parentId && typeof parentId === 'object' && parentId._id) return parentId._id;
+    if (parentId && typeof parentId === 'object' && parentId.id) return parentId.id;
+    return null;
+  };
+  
+  const postChildId = getChildId(post?.childId || post?.child?._id || post?.child?.id);
+  
+  const isOwner = currentUser && post && postChildId && 
+    children && children.some(child => {
+      const childId = child.id;
+      const childParentId = getParentId(child.parentId);
+      const currentUserId = currentUser.id;
+      
+      return childId === postChildId && childParentId === currentUserId;
+    });
+
+  // Debug isOwner calculation
+  useEffect(() => {
+    if (contentType.toLowerCase() === 'memory') {
+      console.log('🔍 Memory post isOwner debug:', {
+        postId: post?._id || post?.id,
+        currentUser: currentUser?.id,
+        postChildId,
+        childrenCount: children?.length || 0,
+        isOwner,
+        children: children?.map(child => ({
+          childId: child.id,
+          childParentId: getParentId(child.parentId),
+          currentUserId: currentUser?.id,
+          matches: child.id === postChildId && getParentId(child.parentId) === currentUser?.id
+        }))
+      });
+    }
+  }, [post, currentUser, postChildId, children, isOwner, contentType]);
+
+  const handleVisibilityUpdate = async (newVisibility: 'private' | 'public') => {
+    try {
+      // For memory posts, update through Redux
+      if (contentType.toLowerCase() === 'memory') {
+        await dispatch(updateMemory({
+          memoryId: post._id || post.id,
+          data: { visibility: newVisibility }
+        })).unwrap();
+      }
+      
+
+      
+      // Call parent callback if provided
+      if (onVisibilityUpdate) {
+        onVisibilityUpdate(post._id || post.id, newVisibility);
+      }
+    } catch (error) {
+      throw error; // Re-throw to let VisibilityToggle handle the error
+    }
+  };
+
   return (
     <View style={styles.timelinePost}>
       <View style={styles.postHeader}>
@@ -253,20 +343,35 @@ export default function TimelinePost({ post, onReactionPress, onCommentPress }: 
             </Text>
           </TouchableOpacity>
         </View>
+        
+        {/* Visibility Toggle for Memory Posts - Only show for owners */}
+        {contentType.toLowerCase() === 'memory' && isOwner && (
+          <View style={styles.visibilityContainer}>
+            <VisibilityToggle
+              visibility={post.visibility || 'private'}
+              onUpdate={handleVisibilityUpdate}
+              size="small"
+            />
+          </View>
+        )}
       </View>
       
-      {/* Comments Section */}
+      {/* Comments Section - Inline mode with better keyboard handling */}
       {showComments && (
         <View style={styles.commentsSection}>
           <CommentSystem
             targetType={mapContentTypeToCommentTargetType(contentType)}
             targetId={post._id || post.id}
+            mode="inline"
+            maxHeight={500} // Increased height for better keyboard handling
             useScrollView={true}
             onCommentAdded={(comment) => {
               // Comment added successfully
+              setCommentCount(prev => prev + 1);
             }}
             onCommentDeleted={(commentId) => {
               // Comment deleted successfully
+              setCommentCount(prev => Math.max(0, prev - 1));
             }}
             onCommentEdited={(comment) => {
               // Comment edited successfully
@@ -275,7 +380,7 @@ export default function TimelinePost({ post, onReactionPress, onCommentPress }: 
         </View>
       )}
 
-      {/* Comment Modal */}
+      {/* Comment Modal - Full screen mode */}
       {(post._id || post.id) && (
         <CommentModal
           visible={showCommentModal}
@@ -461,6 +566,12 @@ const styles = StyleSheet.create({
   commentsSection: {
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    maxHeight: 400,
+    // Remove maxHeight constraint - let CommentSystem handle it
+  },
+  visibilityContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
 }); 

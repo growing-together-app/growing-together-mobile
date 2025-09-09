@@ -2,8 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { commentService } from '../../services/commentService';
-import CommentModal from '../CommentModal';
-import CommentSystem from '../CommentSystem';
+import CommentSystem, { CommentModal } from '../CommentSystem';
 import { DeleteButton, EditButton } from '../ui/EditDeleteButtons';
 import ReactionBar from '../ui/ReactionBar';
 
@@ -163,6 +162,8 @@ const HealthRecordItem: React.FC<HealthRecordItemProps> = ({
           <CommentSystem
             targetType="healthRecord"
             targetId={id}
+            mode="inline"
+            maxHeight={500}
             useScrollView={true}
             onCommentAdded={(comment) => {
               // Comment added successfully

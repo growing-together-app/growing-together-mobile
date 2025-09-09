@@ -1,18 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useHeaderHeight } from '@react-navigation/elements';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from "react-redux";
 import { Colors } from "../constants/Colors";
 import { useThemeColor } from "../hooks/useThemeColor";
@@ -56,6 +61,11 @@ interface CommentSystemProps {
   onCommentAdded?: (comment: Comment) => void;
   onCommentDeleted?: (commentId: string) => void;
   onCommentEdited?: (comment: Comment) => void;
+  // New props for unified behavior
+  mode?: 'modal' | 'inline'; // 'modal' for full-screen, 'inline' for embedded
+  maxHeight?: number; // Custom max height for inline mode
+  showHeader?: boolean; // Show/hide header
+  onClose?: () => void; // Close callback for modal mode
 }
 
 // Comment Input Component
@@ -66,6 +76,7 @@ const CommentInput: React.FC<{
   onCommentAdded: (comment: Comment) => void;
   onCancel?: () => void;
   placeholder?: string;
+  onFocus?: () => void;
 }> = ({
   targetType,
   targetId,
@@ -73,6 +84,7 @@ const CommentInput: React.FC<{
   onCommentAdded,
   onCancel,
   placeholder,
+  onFocus,
 }) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -85,6 +97,13 @@ const CommentInput: React.FC<{
 
     setLoading(true);
     try {
+      console.log('Creating comment/reply:', {
+        content: content.trim(),
+        targetType,
+        targetId,
+        parentCommentId,
+      });
+      
       const newComment = await commentService.createComment({
         content: content.trim(),
         targetType: targetType as any,
@@ -95,9 +114,14 @@ const CommentInput: React.FC<{
       setContent("");
       onCommentAdded(newComment);
       onCancel?.();
-    } catch (error) {
+      
+      // Success feedback - comment will be visible immediately
+    } catch (error: any) {
       console.error("Error creating comment:", error);
-      Alert.alert("Lỗi", "Không thể tạo bình luận. Vui lòng thử lại.");
+      Alert.alert(
+        "Lỗi", 
+        `Không thể tạo bình luận. ${error.message || 'Vui lòng thử lại.'}`
+      );
     } finally {
       setLoading(false);
     }
@@ -105,25 +129,36 @@ const CommentInput: React.FC<{
 
   return (
     <View style={styles.inputContainer}>
-      <TextInput
-        style={styles.input}
-        value={content}
-        onChangeText={setContent}
-        placeholder={
-          placeholder ||
-          (parentCommentId ? "Viết reply..." : "Viết bình luận...")
-        }
-        placeholderTextColor="#999"
-        multiline
-        maxLength={1000}
-        editable={true}
-      />
-      <View style={styles.inputActions}>
-        {onCancel && (
-          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.cancelButtonText}>Hủy</Text>
+      {parentCommentId && (
+        <View style={styles.replyHeader}>
+          <Text style={styles.replyLabel}>Trả lời bình luận</Text>
+          <TouchableOpacity
+            style={styles.addCommentButton}
+            onPress={onCancel}
+          >
+            <Text style={styles.addCommentButtonText}>+ Thêm bình luận</Text>
           </TouchableOpacity>
-        )}
+        </View>
+      )}
+      
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          value={content}
+          onChangeText={setContent}
+          placeholder={
+            placeholder ||
+            (parentCommentId ? "Viết reply..." : "Viết bình luận...")
+          }
+          placeholderTextColor="#999"
+          multiline
+          textAlignVertical="top"
+          blurOnSubmit={false}
+          maxLength={1000}
+          editable={true}
+          onFocus={onFocus}
+        />
+        
         <TouchableOpacity
           style={[
             styles.submitButton,
@@ -135,10 +170,18 @@ const CommentInput: React.FC<{
           {loading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Gửi</Text>
+            <Ionicons name="send" size={16} color="#fff" />
           )}
         </TouchableOpacity>
       </View>
+      
+      {onCancel && (
+        <View style={styles.inputActions}>
+          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <Text style={styles.cancelButtonText}>Hủy</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -155,9 +198,21 @@ const CommentItem: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [loading, setLoading] = useState(false);
+  const [showReplies, setShowReplies] = useState(level === 0);
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
   const borderColor = "#e0e0e0";
+
+  // Auto-expand when new replies are added
+  useEffect(() => {
+    if (comment.replies && comment.replies.length > 0 && level === 0) {
+      setShowReplies(true);
+    }
+  }, [comment.replies?.length, level]);
+
+  const toggleReplies = () => {
+    setShowReplies(!showReplies);
+  };
 
   const handleReply = () => {
     onReply(comment._id);
@@ -279,7 +334,7 @@ const CommentItem: React.FC<{
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>Cập nhật</Text>
+                <Ionicons name="checkmark" size={16} color="#fff" />
               )}
             </TouchableOpacity>
           </View>
@@ -316,18 +371,35 @@ const CommentItem: React.FC<{
       </View>
 
       {comment.replies && comment.replies.length > 0 && (
-        <View style={styles.repliesContainer}>
-          {comment.replies.map((reply) => (
-            <CommentItem
-              key={reply._id}
-              comment={reply}
-              currentUserId={currentUserId}
-              onReply={onReply}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              level={level + 1}
+        <View style={styles.repliesSection}>
+          {/* View Replies Button */}
+          <TouchableOpacity style={styles.viewRepliesButton} onPress={toggleReplies}>
+            <Ionicons
+              name={showReplies ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#1877f2"
             />
-          ))}
+            <Text style={styles.viewRepliesText}>
+              {showReplies ? "Ẩn" : "Xem"} {comment.replies.length} trả lời
+            </Text>
+          </TouchableOpacity>
+
+          {/* Replies Container */}
+          {showReplies && (
+            <View style={[styles.repliesContainer, { maxWidth: "100%" }]}>
+              {comment.replies.map((reply, index) => (
+                <CommentItem
+                  key={`${reply._id}-${index}`}
+                  comment={reply}
+                  currentUserId={currentUserId}
+                  onReply={onReply}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  level={level + 1}
+                />
+              ))}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -342,6 +414,10 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
   onCommentAdded,
   onCommentDeleted,
   onCommentEdited,
+  mode = 'inline',
+  maxHeight = 400,
+  showHeader = false,
+  onClose,
 }) => {
   const [comments, setComments] = useState<Comment[]>([]);
 
@@ -357,17 +433,24 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const backgroundColor = useThemeColor({}, "background");
   const textColor = useThemeColor({}, "text");
+  
+  // Safe area and header height hooks
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList<Comment>>(null);
+  const fetchingRef = useRef(false);
 
-  const fetchComments = async (pageNum = 1, refresh = false) => {
-    if (loading) return;
-
+  const fetchComments = useCallback(async (pageNum = 1, refresh = false) => {
+    if (fetchingRef.current && !refresh) return; // Prevent multiple simultaneous requests
+    
+    fetchingRef.current = true;
     setLoading(true);
     try {
       const response = await commentService.getComments(
         targetType,
         targetId,
         pageNum,
-        10
+        10,
+        5
       );
       // Handle nested response format from backend
       let newComments: Comment[] = [];
@@ -384,6 +467,8 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
         // Fallback
         newComments = responseData;
       }
+      
+      console.log('Comments parsed successfully:', newComments.length, 'comments');
 
       if (refresh) {
         setComments(newComments);
@@ -400,14 +485,15 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
         setComments([]);
       }
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [targetType, targetId]); // Remove 'loading' from dependencies to prevent infinite loop
 
   useEffect(() => {
     fetchComments(1, true);
-  }, [fetchComments]);
+  }, [targetType, targetId]); // Only run when target changes, not when fetchComments changes
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -476,90 +562,159 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
     return null;
   };
 
+  // Dynamic styles based on mode
+  const containerStyle = mode === 'modal' 
+    ? [styles.container, styles.modalContainer]
+    : [styles.container, styles.inlineContainer, { maxHeight }];
+
+  const commentsListStyle = mode === 'modal'
+    ? [styles.commentsList, styles.modalCommentsList]
+    : [styles.commentsList, styles.inlineCommentsList];
+
+  const headerHeight = useHeaderHeight?.() ?? 0;
+
+  // Keyboard offset based on mode and safe area
+  const keyboardOffset =
+  Platform.OS === 'ios'
+    ? (mode === 'modal' ? 12 : headerHeight + insets.top) 
+    : 0;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.commentsList}>
-        {useScrollView ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-            }
-            onScroll={({ nativeEvent }: any) => {
-              const { layoutMeasurement, contentOffset, contentSize } =
-                nativeEvent;
-              const paddingToBottom = 20;
-              if (
-                layoutMeasurement.height + contentOffset.y >=
-                contentSize.height - paddingToBottom
-              ) {
-                handleLoadMore();
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardOffset : 0}
+    >
+      <View style={containerStyle}>
+        {/* Header for modal mode */}
+        {showHeader && mode === 'modal' && (
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              Bình luận ({safeComments.length})
+            </Text>
+          </View>
+        )}
+
+        <View style={commentsListStyle}>
+          {useScrollView ? (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                />
               }
+              onScroll={({ nativeEvent }: any) => {
+                const { layoutMeasurement, contentOffset, contentSize } =
+                  nativeEvent;
+                const paddingToBottom = 20;
+                if (
+                  layoutMeasurement.height + contentOffset.y >=
+                  contentSize.height - paddingToBottom
+                ) {
+                  handleLoadMore();
+                }
+              }}
+              scrollEventThrottle={400}
+              style={{ flex: 1 }}
+              contentContainerStyle={[styles.scrollViewContent, { paddingBottom: 120 }]}
+            >
+              {safeComments.length === 0 ? (
+                renderEmptyState()
+              ) : (
+                <>
+                  {safeComments.map((comment) => (
+                    <View key={comment._id}>
+                      {renderComment({ item: comment })}
+                    </View>
+                  ))}
+                  {renderFooter()}
+                </>
+              )}
+            </ScrollView>
+          ) : (
+            <FlatList
+              ref={listRef}
+              data={safeComments}
+              renderItem={renderComment}
+              keyExtractor={(item) => item._id}
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                />
+              }
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.1}
+              ListEmptyComponent={renderEmptyState}
+              ListFooterComponent={renderFooter}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+              contentContainerStyle={[styles.flatListContent, { paddingBottom: 120 }]}
+            />
+          )}
+        </View>
+
+        {showReplyInput && replyingTo && (
+          <CommentInput
+            targetType={targetType}
+            targetId={targetId}
+            parentCommentId={replyingTo}
+            onCommentAdded={(newReply) => {
+              console.log('Reply added in CommentSystem:', newReply);
+              // Add the reply to the parent comment
+              setComments(prev => prev.map(comment => {
+                if (comment._id === replyingTo) {
+                  const updatedComment = {
+                    ...comment,
+                    replies: [...(comment.replies || []), newReply]
+                  };
+                  console.log('Updated comment with reply in CommentSystem:', updatedComment);
+                  return updatedComment;
+                }
+                return comment;
+              }));
+              setShowReplyInput(false);
+              setReplyingTo(null);
+              onCommentAdded?.(newReply);
             }}
-            scrollEventThrottle={400}
-            style={{ flex: 1 }}
-          >
-            {safeComments.length === 0 ? (
-              renderEmptyState()
-            ) : (
-              <>
-                {safeComments.map((comment) => (
-                  <View key={comment._id}>
-                    {renderComment({ item: comment })}
-                  </View>
-                ))}
-                {renderFooter()}
-              </>
-            )}
-          </ScrollView>
-        ) : (
-          <FlatList
-            data={safeComments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item._id}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-            }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.1}
-            ListEmptyComponent={renderEmptyState}
-            ListFooterComponent={renderFooter}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
+            onCancel={() => {
+              setShowReplyInput(false);
+              setReplyingTo(null);
+            }}
+            placeholder="Viết reply..."
           />
         )}
+
+        {/* Main Comment Input - Only show when not replying */}
+        {!showReplyInput && (
+          <CommentInput
+            targetType={targetType}
+            targetId={targetId}
+            onCommentAdded={handleCommentAdded}
+            onFocus={() => {
+              requestAnimationFrame(() => {
+                // Scroll to end when input is focused
+                if (listRef.current) {
+                  listRef.current.scrollToEnd({ animated: true });
+                }
+              });
+            }}
+          />
+        )}
+        
+        {/* Safe area spacer for iOS home indicator */}
+        <View style={{ height: insets.bottom }} />
       </View>
-
-      {showReplyInput && replyingTo && (
-        <CommentInput
-          targetType={targetType}
-          targetId={targetId}
-          parentCommentId={replyingTo}
-          onCommentAdded={(newComment) => {
-            handleCommentAdded(newComment);
-            setShowReplyInput(false);
-            setReplyingTo(null);
-          }}
-          onCancel={() => {
-            setShowReplyInput(false);
-            setReplyingTo(null);
-          }}
-          placeholder="Viết reply..."
-        />
-      )}
-
-      <CommentInput
-        targetType={targetType}
-        targetId={targetId}
-        onCommentAdded={handleCommentAdded}
-      />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -568,9 +723,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  modalContainer: {
+    flex: 1,
+  },
+  inlineContainer: {
+    flex: 0, // Don't expand in inline mode
+  },
   commentsList: {
-    maxHeight: 300,
     backgroundColor: "#f8f9fa",
+  },
+  modalCommentsList: {
+    flex: 1, // Take full available space in modal
+  },
+  inlineCommentsList: {
+    maxHeight: 300, // Keep original maxHeight for inline
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  scrollViewContent: {
+    paddingBottom: 20,
+  },
+  flatListContent: {
+    paddingBottom: 20,
   },
   inputContainer: {
     padding: 15,
@@ -578,12 +768,39 @@ const styles = StyleSheet.create({
     borderTopColor: "#e0e0e0",
     backgroundColor: "#fff",
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    flexWrap: "nowrap",
+  },
+  replyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  replyLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  addCommentButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 4,
+  },
+  addCommentButtonText: {
+    fontSize: 12,
+    color: Colors.light.tint,
+    fontWeight: "500",
+  },
   input: {
+    flex: 1,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
-    marginBottom: 10,
     minHeight: 40,
     maxHeight: 100,
     backgroundColor: "#fff",
@@ -593,6 +810,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
+    flexWrap: "nowrap", // Prevent wrapping
   },
   cancelButton: {
     paddingVertical: 8,
@@ -605,15 +823,20 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: Colors.light.tint,
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0, // Prevent shrinking
   },
   submitButtonDisabled: {
     backgroundColor: "#ccc",
   },
   submitButtonText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 14,
   },
   commentContainer: {
@@ -692,6 +915,24 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: 10,
   },
+  repliesSection: {
+    marginTop: 8,
+  },
+  viewRepliesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+    borderRadius: 4,
+    backgroundColor: '#f8f9fa',
+  },
+  viewRepliesText: {
+    fontSize: 12,
+    color: '#1877f2',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
   repliesContainer: {
     marginTop: 8,
   },
@@ -716,5 +957,37 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 });
+
+// Modal wrapper for CommentSystem
+export const CommentModal: React.FC<{
+  visible: boolean;
+  onClose: () => void;
+  targetType: 'promptResponse' | 'memory' | 'healthRecord' | 'growthRecord' | 'comment';
+  targetId: string;
+  onCommentAdded?: (comment: Comment) => void;
+  onCommentDeleted?: (commentId: string) => void;
+  onCommentEdited?: (comment: Comment) => void;
+}> = ({ visible, onClose, targetType, targetId, onCommentAdded, onCommentDeleted, onCommentEdited }) => {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <CommentSystem
+        targetType={targetType}
+        targetId={targetId}
+        mode="modal"
+        showHeader={true}
+        onClose={onClose}
+        onCommentAdded={onCommentAdded}
+        onCommentDeleted={onCommentDeleted}
+        onCommentEdited={onCommentEdited}
+        useScrollView={true}
+      />
+    </Modal>
+  );
+};
 
 export default CommentSystem;

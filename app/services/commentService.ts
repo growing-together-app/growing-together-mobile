@@ -1,5 +1,5 @@
-import { sanitizeObjectId } from '../utils/validation';
-import apiService, { ApiResponse } from './apiService';
+import { sanitizeObjectId } from "../utils/validation";
+import apiService, { ApiResponse } from "./apiService";
 
 // Types
 interface User {
@@ -12,7 +12,12 @@ interface User {
 interface Comment {
   _id: string;
   content: string;
-  targetType: 'promptResponse' | 'memory' | 'healthRecord' | 'growthRecord' | 'comment';
+  targetType:
+    | "promptResponse"
+    | "memory"
+    | "healthRecord"
+    | "growthRecord"
+    | "comment";
   targetId: string;
   user: User;
   parentComment?: string | null;
@@ -23,7 +28,12 @@ interface Comment {
 
 interface CreateCommentData {
   content: string;
-  targetType: 'promptResponse' | 'memory' | 'healthRecord' | 'growthRecord' | 'comment';
+  targetType:
+    | "promptResponse"
+    | "memory"
+    | "healthRecord"
+    | "growthRecord"
+    | "comment";
   targetId: string;
   parentCommentId?: string | null;
 }
@@ -65,8 +75,8 @@ class CommentService {
 
   async createComment(data: CreateCommentData): Promise<Comment> {
     try {
-      const response = await apiService.post('/comments', data) as any;
-      
+      const response = (await apiService.post("/comments", data)) as any;
+
       // Handle nested response format from backend
       let commentData: Comment;
       if (response.success) {
@@ -80,12 +90,15 @@ class CommentService {
         // Direct data format
         commentData = response.data;
       } else {
-        throw new Error(response.message || 'Failed to create comment');
+        throw new Error(response.message || "Failed to create comment");
       }
-      
+
       return commentData;
     } catch (error: any) {
-      console.error('Error creating comment:', error);
+      console.error("=== COMMENT SERVICE: Error creating comment ===");
+      console.error("Error details:", error);
+      console.error("Error message:", error.message);
+      console.error("Error response:", error.response);
       throw error;
     }
   }
@@ -94,31 +107,37 @@ class CommentService {
     targetType: string,
     targetId: string,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    maxDepth: number = 5
   ): Promise<CommentsResponse> {
     try {
-      const response = await apiService.get(
-        `/comments?targetType=${targetType}&targetId=${targetId}&page=${page}&limit=${limit}`
-      ) as CommentsResponse;
-      
+      const response = (await apiService.get(
+        `/comments?targetType=${targetType}&targetId=${targetId}&page=${page}&limit=${limit}&maxDepth=${maxDepth}`
+      )) as CommentsResponse;
 
-      
       if (response.success) {
         return response;
       } else {
-        throw new Error(response.message || 'Failed to fetch comments');
+        throw new Error(response.message || "Failed to fetch comments");
       }
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      console.error("=== COMMENT SERVICE: Error fetching comments ===");
+      console.error("Error details:", error);
       throw error;
     }
   }
 
-  async updateComment(commentId: string, data: UpdateCommentData): Promise<Comment> {
+  async updateComment(
+    commentId: string,
+    data: UpdateCommentData
+  ): Promise<Comment> {
     try {
       const sanitizedId = sanitizeObjectId(commentId);
-      const response = await apiService.put(`/comments/${sanitizedId}`, data) as any;
-      
+      const response = (await apiService.put(
+        `/comments/${sanitizedId}`,
+        data
+      )) as any;
+
       // Handle both response formats
       if (response.success) {
         return response.data;
@@ -126,10 +145,10 @@ class CommentService {
         // Backend returns: { data: commentData }
         return response.data;
       } else {
-        throw new Error(response.message || 'Failed to update comment');
+        throw new Error(response.message || "Failed to update comment");
       }
     } catch (error) {
-      console.error('Error updating comment:', error);
+      console.error("Error updating comment:", error);
       throw error;
     }
   }
@@ -137,12 +156,14 @@ class CommentService {
   async deleteComment(commentId: string): Promise<void> {
     try {
       const sanitizedId = sanitizeObjectId(commentId);
-      const response = await apiService.delete(`/comments/${sanitizedId}`) as ApiResponse;
+      const response = (await apiService.delete(
+        `/comments/${sanitizedId}`
+      )) as ApiResponse;
       if (!response.success) {
-        throw new Error(response.message || 'Failed to delete comment');
+        throw new Error(response.message || "Failed to delete comment");
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      console.error("Error deleting comment:", error);
       throw error;
     }
   }
@@ -150,18 +171,27 @@ class CommentService {
   async getComment(commentId: string): Promise<Comment> {
     try {
       const sanitizedId = sanitizeObjectId(commentId);
-      const response = await apiService.get(`/comments/${sanitizedId}`) as CommentResponse;
+      const response = (await apiService.get(
+        `/comments/${sanitizedId}`
+      )) as CommentResponse;
       if (response.success) {
         return response.data;
       } else {
-        throw new Error(response.message || 'Failed to fetch comment');
+        throw new Error(response.message || "Failed to fetch comment");
       }
     } catch (error) {
-      console.error('Error fetching comment:', error);
+      console.error("Error fetching comment:", error);
       throw error;
     }
   }
 }
 
 export const commentService = CommentService.getInstance();
-export type { Comment, CommentResponse, CommentsResponse, CreateCommentData, UpdateCommentData };
+export type {
+  Comment,
+  CommentResponse,
+  CommentsResponse,
+  CreateCommentData,
+  UpdateCommentData
+};
+

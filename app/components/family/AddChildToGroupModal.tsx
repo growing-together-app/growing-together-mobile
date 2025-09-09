@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAppDispatch, useAppSelector } from "../../redux/hooks";
 import { addChildToFamilyGroup, fetchChildren } from "../../redux/slices/childSlice";
+import AddButton from "../ui/AddButton";
 import LoadingSpinner from "../ui/LoadingSpinner";
 
 interface AddChildToGroupModalProps {
@@ -61,16 +62,7 @@ export default function AddChildToGroupModal({
       existingChild.id === childId || existingChild._id === childId
     );
     
-    // Debug log
-    if (isInGroup) {
-      console.log('Child already in group:', {
-        childId,
-        existingChildren: existingChildren.map((child: any) => ({
-          id: child.id || child._id,
-          name: child.name || child.firstName + ' ' + child.lastName
-        }))
-      });
-    }
+
     
     return isInGroup;
   };
@@ -196,19 +188,6 @@ export default function AddChildToGroupModal({
                 </View>
               ) : (
                 <>
-                  <Text style={styles.debugText}>
-                    Found {allChildren.length} children to display
-                  </Text>
-                  
-                  <Text style={styles.debugText}>
-                    Selected: {selectedChildIds.length} child{selectedChildIds.length !== 1 ? 'ren' : ''}
-                  </Text>
-                  
-                  {selectedChildIds.length > 0 && (
-                    <Text style={styles.debugText}>
-                      Selected IDs: {selectedChildIds.join(', ')}
-                    </Text>
-                  )}
 
                   {/* Select/Deselect All Button */}
                   <TouchableOpacity
@@ -235,15 +214,7 @@ export default function AddChildToGroupModal({
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Debug: Show first child info */}
-                  {allChildren.length > 0 && (
-                    <Text style={styles.debugText}>
-                      First child: {allChildren[0].name} -{" "}
-                      {allChildren[0].birthdate}
-                    </Text>
-                  )}
-
-                  {/* Simple list for debugging */}
+                  {/* Children list */}
                   <ScrollView 
                     style={styles.childrenList}
                     showsVerticalScrollIndicator={true}
@@ -309,22 +280,12 @@ export default function AddChildToGroupModal({
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.addButton,
-                selectedChildIds.length === 0 && styles.addButtonDisabled,
-              ]}
+            <AddButton
+              title={`Add ${selectedChildIds.length > 0 ? `(${selectedChildIds.length})` : ''} to Group`}
               onPress={handleAddChildToGroup}
+              variant="modal"
               disabled={selectedChildIds.length === 0 || updating}
-            >
-              {updating ? (
-                <LoadingSpinner message="Adding..." />
-              ) : (
-                <Text style={styles.addButtonText}>
-                  Add {selectedChildIds.length > 0 ? `(${selectedChildIds.length})` : ''} to Group
-                </Text>
-              )}
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </View>
@@ -433,28 +394,8 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "600",
   },
-  addButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "#4f8cff",
-    alignItems: "center",
-  },
-  addButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  addButtonText: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "600",
-  },
-  debugText: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 10,
-    textAlign: "center",
-  },
+
+
   simpleChildItem: {
     flexDirection: "row",
     justifyContent: "space-between",

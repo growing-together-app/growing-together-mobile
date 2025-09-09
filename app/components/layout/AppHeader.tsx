@@ -1,17 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
-  Alert,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View
-} from 'react-native';
-import { useAppDispatch } from '../../redux/hooks';
-import { logoutUser } from '../../redux/slices/authSlice';
-import { StorageUtils } from '../../utils/storageUtils';
-import { NotificationBadge } from '../notification/NotificationBadge';
+} from "react-native";
+import { NotificationBadge } from "../notification/NotificationBadge";
 
 interface AppHeaderProps {
   title?: string;
@@ -25,12 +21,11 @@ interface AppHeaderProps {
   showBackButton?: boolean;
   showForwardButton?: boolean;
   showTitle?: boolean;
-  showLogoutButton?: boolean;
   showNotificationBadge?: boolean;
   rightComponent?: React.ReactNode;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ 
+const AppHeader: React.FC<AppHeaderProps> = ({
   title,
   onBack,
   onForward,
@@ -42,13 +37,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   showBackButton = true,
   showForwardButton = false,
   showTitle = true,
-  showLogoutButton = false,
   showNotificationBadge = false,
-  rightComponent
+  rightComponent,
 }) => {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
@@ -64,78 +57,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       } else if (canGoBack) {
         router.back();
       } else {
-        router.push('/tabs/home');
+        router.push("/tabs/home");
       }
     } catch (error) {
       try {
-        router.push('/tabs/home');
+        router.push("/tabs/home");
       } catch (fallbackError) {
         // Final fallback - do nothing
       }
     }
   }, [onBack, canGoBack, router]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🔄 Starting logout process...');
-              
-              // Debug: Log storage before logout
-              console.log('📦 Storage before logout:');
-              await StorageUtils.debugStorage();
-              
-              // Dispatch logout action
-              const result = await dispatch(logoutUser());
-              console.log('✅ Logout dispatch completed:', result);
-              
-              // Clear any cached data
-              console.log('🧹 Clearing cached data...');
-              
-              // Debug: Log storage after logout
-              console.log('📦 Storage after logout:');
-              await StorageUtils.debugStorage();
-              
-              // Navigate to login page
-              console.log('🚀 Navigating to login page...');
-              router.replace('/login');
-              
-              console.log('✅ Logout process completed successfully');
-            } catch (error) {
-              console.error('❌ Logout error:', error);
-              
-              // Even if logout fails, try to clear local state and navigate
-              try {
-                console.log('🔄 Attempting fallback logout...');
-                
-                // Clear storage manually
-                await StorageUtils.clear();
-                console.log('🧹 Storage cleared manually');
-                
-                // Navigate to login anyway
-                router.replace('/login');
-                
-                console.log('✅ Fallback logout completed');
-              } catch (fallbackError) {
-                console.error('❌ Fallback logout also failed:', fallbackError);
-                Alert.alert('Error', 'Failed to logout. Please refresh the page and try again.');
-              }
-            }
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <View style={styles.headerContainer}>
@@ -143,36 +75,42 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       {showSearch && (
         <View style={styles.searchRow}>
           {/* Back Arrow */}
-          {showBackButton && (() => {
-            return true;
-          })() && (
-            <TouchableOpacity 
-              onPress={() => {
-                handleBack();
-              }} 
-              style={[
-                styles.navButton, 
-                !canGoBack && styles.navButtonDisabled,
-                { backgroundColor: 'rgba(255,0,0,0.3)' } // More visible red background for debugging
-              ]}
-              disabled={!canGoBack}
-              activeOpacity={0.7}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-              testID="back-button"
-              onPressIn={() => {}}
-              onPressOut={() => {}}
-            >
-              <Ionicons 
-                name="arrow-back" 
-                size={24} 
-                color={canGoBack ? '#333' : '#ccc'} 
-              />
-            </TouchableOpacity>
-          )}
+          {showBackButton &&
+            (() => {
+              return true;
+            })() && (
+              <TouchableOpacity
+                onPress={() => {
+                  handleBack();
+                }}
+                style={[
+                  styles.navButton,
+                  !canGoBack && styles.navButtonDisabled,
+          
+                ]}
+                disabled={!canGoBack}
+                activeOpacity={0.7}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                testID="back-button"
+                onPressIn={() => {}}
+                onPressOut={() => {}}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={canGoBack ? "#333" : "#ccc"}
+                />
+              </TouchableOpacity>
+            )}
 
           {/* Search box */}
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <Ionicons
+              name="search"
+              size={20}
+              color="#666"
+              style={styles.searchIcon}
+            />
             <TextInput
               style={styles.searchInput}
               placeholder={searchPlaceholder}
@@ -182,8 +120,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               returnKeyType="search"
             />
             {searchText.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => handleSearchChange('')}
+              <TouchableOpacity
+                onPress={() => handleSearchChange("")}
                 style={styles.clearButton}
                 activeOpacity={0.7}
               >
@@ -194,25 +132,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
           {/* Right side components */}
           <View style={styles.rightContainer}>
-            {showNotificationBadge && (
-              <NotificationBadge size="medium" />
-            )}
+            {showNotificationBadge && <NotificationBadge size="medium" />}
             {rightComponent}
-            {showLogoutButton && (
-              <TouchableOpacity 
-                onPress={handleLogout}
-                style={styles.logoutButton}
-                activeOpacity={0.7}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                testID="logout-button"
-              >
-                <Ionicons 
-                  name="log-out-outline" 
-                  size={24} 
-                  color="#dc2626" 
-                />
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       )}
@@ -222,12 +143,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
     paddingTop: 40,
     paddingBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -237,8 +158,8 @@ const styles = StyleSheet.create({
   navButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 20,
     zIndex: 10,
     elevation: 5,
@@ -247,40 +168,30 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   rightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-  },
-  logoutButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
     marginHorizontal: 16,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
     borderRadius: 25,
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: "#e9ecef",
     gap: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -292,23 +203,23 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 18,
-    color: '#333',
+    color: "#333",
     paddingVertical: 0,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   clearButton: {
     marginLeft: 8,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     height: 44,
     paddingHorizontal: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,

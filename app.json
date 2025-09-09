@@ -28,6 +28,7 @@
     },
     "android": {
       "package": "com.growingtogether.app",
+      "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [
         {
           "action": "VIEW",

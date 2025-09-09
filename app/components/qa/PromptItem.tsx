@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Prompt } from '../../services/promptService';
+import AddButton from '../ui/AddButton';
 
 interface PromptItemProps {
   prompt: Prompt;
@@ -74,14 +75,12 @@ export default function PromptItem({ prompt, onPress, onAddResponse, hasResponse
       </TouchableOpacity>
       
       {!hasResponse && (
-        <TouchableOpacity 
-          style={styles.addButton} 
+        <AddButton
+          title="Answer"
           onPress={onAddResponse}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="add" size={20} color="#4f8cff" />
-          <Text style={styles.addButtonText}>Answer</Text>
-        </TouchableOpacity>
+          variant="secondary"
+          iconSize={20}
+        />
       )}
     </View>
   );
@@ -202,21 +201,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f8ff',
-    paddingVertical: 12,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  addButtonText: {
-    color: '#4f8cff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+
 }); 

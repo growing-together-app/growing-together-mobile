@@ -625,11 +625,27 @@ export async function getFamilyGroupTimeline(groupId: string, page: number = 1, 
   };
 }> {
   try {
+    // Add console.log to debug the API call
+    console.log('🔍 Fetching timeline for group:', groupId, 'page:', page, 'limit:', limit);
+    
     const response = await apiService.get(`/family-groups/${groupId}/timeline?page=${page}&limit=${limit}`);
+    
+    console.log('📡 Timeline API response:', {
+      status: response.status,
+      hasData: !!response.data,
+      responseKeys: response.data ? Object.keys(response.data) : 'no data',
+      timelineLength: response.data?.timeline?.length || 0
+    });
+    
     const data = response.data || response;
     return data;
-  } catch (error) {
-    console.error('Error fetching family group timeline:', error);
+  } catch (error: any) {
+    console.error('❌ Error fetching family group timeline:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     return {
       timeline: [],
       children: [],

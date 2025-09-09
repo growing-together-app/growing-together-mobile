@@ -33,9 +33,11 @@ const transformGrowthRecord = (record: any): GrowthRecord => {
     childId = growthRecord.child;
   }
   
+  
   return {
     id: growthRecord._id || growthRecord.id,
     childId: childId,
+    parentId: growthRecord.authorId || growthRecord.parentId, // Use authorId if available, fallback to parentId
     type: growthRecord.type,
     value: growthRecord.value,
     unit: growthRecord.unit,
@@ -101,9 +103,11 @@ const transformHealthRecord = (record: any): HealthRecord => {
     childId = healthRecord.child;
   }
   
+  
   return {
     id: healthRecord._id || healthRecord.id,
     childId: childId,
+    parentId: healthRecord.authorId || healthRecord.parentId, // Use authorId if available, fallback to parentId
     type: healthRecord.type,
     title: healthRecord.title,
     description: healthRecord.description,

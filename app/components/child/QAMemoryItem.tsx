@@ -2,8 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { commentService } from '../../services/commentService';
-import CommentModal from '../CommentModal';
-import CommentSystem from '../CommentSystem';
+import CommentSystem, { CommentModal } from '../CommentSystem';
 import { DeleteButton, EditButton } from '../ui/EditDeleteButtons';
 import ReactionBar from '../ui/ReactionBar';
 
@@ -165,6 +164,8 @@ const QAMemoryItem: React.FC<QAMemoryItemProps> = ({
           <CommentSystem
             targetType="promptResponse"
             targetId={id}
+            mode="inline"
+            maxHeight={500}
             useScrollView={true}
             onCommentAdded={(comment) => {
               // Comment added successfully

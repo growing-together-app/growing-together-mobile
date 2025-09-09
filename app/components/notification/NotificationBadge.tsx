@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNotificationPolling } from '../../hooks/useNotificationPolling';
 import { useThemeColor } from '../../hooks/useThemeColor';
 import { fetchUnreadCount } from '../../redux/slices/notificationSlice';
 import { RootState } from '../../redux/store';
@@ -26,17 +27,15 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = ({
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
 
-  // Use polling hook for automatic refresh
-  // const { polling } = useNotificationPolling(30000);
+  // Use polling hook for automatic refresh (60 seconds to reduce API calls)
+  const { polling } = useNotificationPolling(60000);
 
-  // Refresh notification count when refreshing changes
+  // Fetch unread count once when component mounts and user is authenticated
   useEffect(() => {
-    if (refreshing && isAuthenticated) {
-      setTimeout(() => {
-        dispatch(fetchUnreadCount() as any);
-      }, 1500);
+    if (isAuthenticated) {
+      dispatch(fetchUnreadCount() as any);
     }
-  }, [refreshing, dispatch, isAuthenticated]);
+  }, [isAuthenticated, dispatch]);
 
   const handlePress = () => {
     if (onPress) {

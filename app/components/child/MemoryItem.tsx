@@ -11,7 +11,7 @@ import { updateMemory } from '../../redux/slices/memorySlice';
 import { commentService } from '../../services/commentService';
 import { Memory } from '../../services/memoryService';
 import { User } from '../../services/userService';
-import CommentModal from '../CommentModal';
+import { CommentModal } from '../CommentSystem';
 import Avatar from '../ui/Avatar';
 import ReactionBar from '../ui/ReactionBar';
 import VisibilityToggle from '../ui/VisibilityToggle';

@@ -5,7 +5,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +20,7 @@ import { createMemory } from '../../redux/slices/memorySlice';
 import authService from '../../services/authService';
 import { CreateMemoryData } from '../../services/memoryService';
 import { conditionalLog } from '../../utils/logUtils';
+import AddButton from '../ui/AddButton';
 import VisibilityToggle, { VisibilityType } from '../ui/VisibilityToggle';
 
 interface AddMemoryModalProps {
@@ -288,7 +291,10 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
       presentationStyle="pageSheet"
       onRequestClose={handleCancel}
     >
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={styles.container}
+      >
         <View style={styles.header}>
           <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -311,7 +317,12 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+        >
           <View style={styles.formGroup}>
             <Text style={styles.label}>Title *</Text>
             <TextInput
@@ -320,6 +331,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               onChangeText={setTitle}
               placeholder="Enter memory title"
               maxLength={100}
+              returnKeyType="next"
             />
           </View>
 
@@ -333,6 +345,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               multiline
               numberOfLines={4}
               maxLength={500}
+              returnKeyType="next"
             />
           </View>
 
@@ -344,6 +357,7 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
               onChangeText={setTags}
               placeholder="Enter tags separated by commas"
               maxLength={200}
+              returnKeyType="done"
             />
             <Text style={styles.helpText}>
               Example: first steps, birthday, milestone
@@ -352,33 +366,36 @@ export default function AddMemoryModal({ visible, onClose, childId }: AddMemoryM
 
           {/* Only show visibility toggle for creator */}
           {isCreator && (
-            <VisibilityToggle
-              visibility={visibility}
-              onUpdate={async (newVisibility) => setVisibility(newVisibility)}
-              size="small"
-            />
+            <View style={styles.formGroup}>
+              <VisibilityToggle
+                visibility={visibility}
+                onUpdate={async (newVisibility) => setVisibility(newVisibility)}
+                size="small"
+              />
+            </View>
           )}
 
           {renderSelectedFiles()}
 
           <View style={styles.attachmentsSection}>
             <Text style={styles.label}>Attachments</Text>
-            <TouchableOpacity 
-              style={styles.addAttachmentButton}
+            <AddButton
+              title={selectedFiles.length >= 5 ? 'Max files reached' : 'Add Photos/Videos'}
               onPress={pickImages}
+              variant="primary"
+              iconSize={24}
               disabled={selectedFiles.length >= 5}
-            >
-              <MaterialIcons name="add-photo-alternate" size={24} color="#4f8cff" />
-              <Text style={styles.addAttachmentText}>
-                {selectedFiles.length >= 5 ? 'Max files reached' : 'Add Photos/Videos'}
-              </Text>
-            </TouchableOpacity>
+              iconName="add-photo-alternate"
+            />
             <Text style={styles.helpText}>
               You can add up to 5 photos or videos to your memory
             </Text>
           </View>
+          
+          {/* Add extra padding at bottom for better scrolling */}
+          <View style={styles.bottomPadding} />
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -425,6 +442,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
   },
   formGroup: {
@@ -457,22 +476,7 @@ const styles = StyleSheet.create({
   attachmentsSection: {
     marginTop: 20,
   },
-  addAttachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#4f8cff',
-    borderStyle: 'dashed',
-    borderRadius: 8,
-    padding: 20,
-    marginTop: 8,
-  },
-  addAttachmentText: {
-    fontSize: 16,
-    color: '#4f8cff',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
+
   selectedFilesContainer: {
     marginTop: 20,
     marginBottom: 20,
@@ -511,5 +515,8 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  bottomPadding: {
+    height: 100,
   },
 }); 

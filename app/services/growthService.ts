@@ -101,6 +101,7 @@ export async function getGrowthRecords(params: GetGrowthRecordsParams): Promise<
   const mappedRecords = records.map((record: any) => ({
     id: record._id || record.id,
     childId: record.child || record.childId,
+    parentId: record.authorId || record.parentId, // Use authorId if available, fallback to parentId
     familyGroupId: record.familyGroupId,
     type: record.type,
     visibility: record.visibility || 'private',

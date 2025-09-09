@@ -2,6 +2,14 @@
 export interface GrowthRecord {
   id: string;
   childId: string;
+  parentId?: string | { // Can be string or object with user info
+    _id: string;
+    id: string;
+    firstName: string;
+    lastName?: string;
+    avatar?: string;
+    name?: string;
+  };
   type: 'height' | 'weight';
   value: number;
   unit: string;
@@ -87,6 +95,14 @@ export interface HealthRecordAttachment {
 export interface HealthRecord {
   id: string;
   childId: string;
+  parentId?: string | { // Can be string or object with user info
+    _id: string;
+    id: string;
+    firstName: string;
+    lastName?: string;
+    avatar?: string;
+    name?: string;
+  };
   type: 'vaccination' | 'illness' | 'medication';
   title: string;
   description: string;

@@ -58,11 +58,12 @@ function mapPromptResponseFromApi(apiResponse: any): PromptResponse {
     createdAt: att.createdAt || '',
   })) || [];
   
+
   return {
     id: apiResponse.id || apiResponse._id || '',
     promptId: promptId,
     childId: childId,
-    parentId: apiResponse.parentId || '',
+    parentId: apiResponse.authorId || apiResponse.parentId, // Use authorId if available, fallback to parentId
     content: content,
     attachments: mappedAttachments,
     visibility: apiResponse.visibility || 'private',

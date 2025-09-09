@@ -1,7 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render } from '@testing-library/react-native';
 import React from 'react';
-import { Alert } from 'react-native';
 import { Provider } from 'react-redux';
 import AppHeader from '../app/components/layout/AppHeader';
 import authReducer from '../app/redux/slices/authSlice';
@@ -15,8 +14,6 @@ jest.mock('expo-router', () => ({
   }),
 }));
 
-// Mock Alert
-jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const createTestStore = (initialState = {}) => {
   return configureStore({
@@ -48,39 +45,7 @@ describe('AppHeader Component', () => {
     expect(queryByTestId('logout-button')).toBeNull();
   });
 
-  it('renders logout button when showLogoutButton is true', () => {
-    const store = createTestStore();
-    
-    const { getByTestId } = render(
-      <Provider store={store}>
-        <AppHeader showLogoutButton={true} />
-      </Provider>
-    );
 
-    expect(getByTestId('logout-button')).toBeTruthy();
-  });
-
-  it('shows logout confirmation dialog when logout button is pressed', () => {
-    const store = createTestStore();
-    
-    const { getByTestId } = render(
-      <Provider store={store}>
-        <AppHeader showLogoutButton={true} />
-      </Provider>
-    );
-
-    const logoutButton = getByTestId('logout-button');
-    fireEvent.press(logoutButton);
-
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Logout',
-      'Are you sure you want to logout?',
-      expect.arrayContaining([
-        expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
-        expect.objectContaining({ text: 'Logout', style: 'destructive' })
-      ])
-    );
-  });
 
   it('renders search input when showSearch is true', () => {
     const store = createTestStore();

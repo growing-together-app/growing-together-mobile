@@ -14,6 +14,7 @@ import ChildProfileCard from "../components/child/ChildProfileCard";
 import FamilyGroupCard from "../components/family/FamilyGroupCard";
 import AppHeader from "../components/layout/AppHeader";
 import ScreenWithFooter from "../components/layout/ScreenWithFooter";
+import AddButton from "../components/ui/AddButton";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import SearchResults from "../components/ui/SearchResults";
 import UserProfileCard from "../components/user/UserProfileCard";
@@ -57,6 +58,7 @@ export default function HomeScreen() {
       dispatch(fetchCurrentUser(user.id));
       dispatch(fetchMyOwnChildren());
       dispatch(fetchFamilyGroups());
+      // fetchUnreadCount is handled by NotificationBadge polling
     }
   }, [dispatch, user]);
 
@@ -65,6 +67,7 @@ export default function HomeScreen() {
     useCallback(() => {
       if (user) {
         dispatch(fetchFamilyGroups());
+        // fetchUnreadCount is handled by NotificationBadge polling
       }
     }, [dispatch, user])
   );
@@ -354,12 +357,11 @@ export default function HomeScreen() {
           
           {/* Action buttons */}
           <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.quickActionButton}
+            <AddButton
+              title="+ Add Group"
               onPress={() => router.push("/family/create")}
-            >
-              <Text style={styles.quickActionText}>+ Add Group</Text>
-            </TouchableOpacity>
+              variant="primary"
+            />
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() => router.push("/family/join-group")}
@@ -455,7 +457,6 @@ export default function HomeScreen() {
           showBackButton={false}
           showForwardButton={false}
           showTitle={false}
-          showLogoutButton={true}
           showNotificationBadge={true}
         />
 

@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateHealthRecord } from '../../redux/slices/healthSlice';
 import { commentService } from '../../services/commentService';
 import { HealthRecord } from '../../types/health';
-import CommentModal from '../CommentModal';
+import { CommentModal } from '../CommentSystem';
 import { DeleteButton, EditButton } from '../ui/EditDeleteButtons';
 import ReactionBar from '../ui/ReactionBar';
 import VisibilityToggle from '../ui/VisibilityToggle';

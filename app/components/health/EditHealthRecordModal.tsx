@@ -26,6 +26,7 @@ import ErrorText from '../form/ErrorText';
 import FormWrapper from '../form/FormWrapper';
 import InputField from '../form/InputField';
 import PrimaryButton from '../form/PrimaryButton';
+import AddButton from '../ui/AddButton';
 
 interface SelectedFile {
   uri: string;
@@ -553,16 +554,14 @@ const EditHealthRecordModal: React.FC<EditHealthRecordModalProps> = ({
 
             <View style={styles.attachmentsSection}>
               <Text style={styles.sectionTitle}>Attachments</Text>
-              <TouchableOpacity 
-                style={styles.addAttachmentButton}
+              <AddButton
+                title={selectedFiles.length >= 5 ? 'Maximum 5 attachments' : 'Add Photos/Videos'}
                 onPress={pickImages}
+                variant="primary"
+                iconSize={24}
                 disabled={selectedFiles.length >= 5}
-              >
-                <MaterialIcons name="add-photo-alternate" size={24} color="#4f8cff" />
-                <Text style={styles.addAttachmentText}>
-                  {selectedFiles.length >= 5 ? 'Maximum 5 attachments' : 'Add Photos/Videos'}
-                </Text>
-              </TouchableOpacity>
+                iconName="add-photo-alternate"
+              />
               <Text style={styles.helpText}>
                 You can add up to 5 photos or videos to your health record
               </Text>
@@ -576,14 +575,7 @@ const EditHealthRecordModal: React.FC<EditHealthRecordModalProps> = ({
               style={styles.submitButton}
             />
             
-            {/* Debug form errors */}
-            {Object.keys(errors).length > 0 && (
-              <View style={{ marginTop: 10, padding: 10, backgroundColor: '#ffebee' }}>
-                <Text style={{ color: 'red', fontSize: 12 }}>
-                  Form errors: {JSON.stringify(errors)}
-                </Text>
-              </View>
-            )}
+
           </FormWrapper>
         </ScrollView>
 
@@ -802,21 +794,7 @@ const styles = StyleSheet.create({
   attachmentsSection: {
     marginTop: 20,
   },
-  addAttachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#4f8cff',
-    borderRadius: 8,
-    padding: 20,
-    marginTop: 8,
-    backgroundColor: '#f8fbff',
-  },
-  addAttachmentText: {
-    fontSize: 16,
-    color: '#4f8cff',
-    marginLeft: 8,
-  },
+
 });
 
 export default EditHealthRecordModal; 

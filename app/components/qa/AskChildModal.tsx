@@ -8,12 +8,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useAppDispatch } from "../../redux/hooks";
 import { createResponse } from "../../redux/slices/promptResponseSlice";
 import { createPrompt } from "../../redux/slices/promptSlice";
-import { CreatePromptData, CreatePromptResponseData, Prompt } from "../../services/promptService";
+import {
+  CreatePromptData,
+  CreatePromptResponseData,
+  Prompt,
+} from "../../services/promptService";
 import { getAgeRange } from "../../utils/childUtils";
 import PrimaryButton from "../form/PrimaryButton";
 import MultiMediaPicker, { MediaFile } from "../media/MultiMediaPicker";
@@ -75,8 +79,8 @@ export default function AskChildModal({
     // console.log('AskChildModal: childId length:', childId?.length);
 
     // Validate childId
-    if (!childId || typeof childId !== 'string' || childId.trim() === '') {
-      console.error('AskChildModal: Invalid childId:', childId);
+    if (!childId || typeof childId !== "string" || childId.trim() === "") {
+      console.error("AskChildModal: Invalid childId:", childId);
       Alert.alert("Error", "Invalid child ID. Please try again.");
       return;
     }
@@ -86,14 +90,16 @@ export default function AskChildModal({
     try {
       if (questionType === "system" && selectedQuestion) {
         // Case 2: User selects system question - only create response
-        console.log('AskChildModal: Creating response for system question:', selectedQuestion.id);
-        
+
         // Convert MediaFile objects to the format expected by the service
-        const convertedAttachments = attachments.map(file => ({
+        const convertedAttachments = attachments.map((file) => ({
           uri: file.uri,
-          type: file.type === 'image' ? 'image/jpeg' : 
-                file.type === 'video' ? 'video/mp4' : 
-                'audio/mpeg',
+          type:
+            file.type === "image"
+              ? "image/jpeg"
+              : file.type === "video"
+              ? "video/mp4"
+              : "audio/mpeg",
           name: file.filename,
         }));
 
@@ -104,42 +110,39 @@ export default function AskChildModal({
           attachments: convertedAttachments as any,
         };
 
-
         await dispatch(createResponse(responseData)).unwrap();
-        console.log('AskChildModal: Response created successfully for system question');
-        
+
         // Show success message
-        Alert.alert(
-          "Success", 
-          "Your answer has been saved successfully!",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                onSave(selectedQuestion, answer.trim(), attachments.length > 0 ? attachments[0].uri : undefined);
-                onClose();
-              }
-            }
-          ]
-        );
-        
+        Alert.alert("Success", "Your answer has been saved successfully!", [
+          {
+            text: "OK",
+            onPress: () => {
+              onSave(
+                selectedQuestion,
+                answer.trim(),
+                attachments.length > 0 ? attachments[0].uri : undefined
+              );
+              onClose();
+            },
+          },
+        ]);
       } else if (questionType === "custom" && customQuestion.trim()) {
         // Case 1: User asks custom question - create prompt first, then response
-        console.log('AskChildModal: Creating custom prompt:', customQuestion);
-        
+
+
         // Validate custom question data
         const trimmedQuestion = customQuestion.trim();
         if (!trimmedQuestion) {
           Alert.alert("Error", "Please enter a valid question.");
           return;
         }
-        
+
         // Check minimum length requirement (10 characters)
         if (trimmedQuestion.length < 10) {
           Alert.alert("Error", "Question must be at least 10 characters long.");
           return;
         }
-        
+
         // Check maximum length requirement (500 characters)
         if (trimmedQuestion.length > 500) {
           Alert.alert("Error", "Question cannot exceed 500 characters.");
@@ -147,31 +150,30 @@ export default function AskChildModal({
         }
 
         // Calculate age range from birth date
-        const ageRange = childBirthdate ? getAgeRange(childBirthdate) : '4-6';
-        
+        const ageRange = childBirthdate ? getAgeRange(childBirthdate) : "4-6";
 
-        
         const promptData: CreatePromptData = {
           title: trimmedQuestion,
           content: trimmedQuestion,
-          category: 'other', // Valid enum value from schema
-          frequency: 'daily', // Valid enum value from schema
+          category: "other", // Valid enum value from schema
+          frequency: "daily", // Valid enum value from schema
           ageRange: ageRange, // Use calculated age range
-          tags: ['user-generated'],
+          tags: ["user-generated"],
         };
 
-
-
         const newPrompt = await dispatch(createPrompt(promptData)).unwrap();
-        console.log('AskChildModal: Custom prompt created:', newPrompt.id);
-        
+
+
         // Now create response with the new prompt ID
         // Convert MediaFile objects to the format expected by the service
-        const convertedAttachments = attachments.map(file => ({
+        const convertedAttachments = attachments.map((file) => ({
           uri: file.uri,
-          type: file.type === 'image' ? 'image/jpeg' : 
-                file.type === 'video' ? 'video/mp4' : 
-                'audio/mpeg',
+          type:
+            file.type === "image"
+              ? "image/jpeg"
+              : file.type === "video"
+              ? "video/mp4"
+              : "audio/mpeg",
           name: file.filename,
         }));
 
@@ -183,36 +185,40 @@ export default function AskChildModal({
         };
 
         await dispatch(createResponse(responseData)).unwrap();
-        
+
         // Show success message
         Alert.alert(
-          "Success", 
+          "Success",
           "Your question and answer have been saved successfully!",
           [
             {
               text: "OK",
               onPress: () => {
-                onSave(newPrompt, answer.trim(), attachments.length > 0 ? attachments[0].uri : undefined);
+                onSave(
+                  newPrompt,
+                  answer.trim(),
+                  attachments.length > 0 ? attachments[0].uri : undefined
+                );
                 onClose();
-              }
-            }
+              },
+            },
           ]
         );
-        
       } else {
         Alert.alert("Please fill in the question and answer.");
       }
     } catch (error: any) {
       // Show detailed error message
-      let errorMessage = "Failed to save question and answer. Please try again.";
-      
+      let errorMessage =
+        "Failed to save question and answer. Please try again.";
+
       // Try to extract error details from different possible structures
       if (error.payload) {
-        if (typeof error.payload === 'string') {
+        if (typeof error.payload === "string") {
           errorMessage = error.payload;
         } else if (error.payload.response) {
           // Handle the new error structure from Redux slice
-          if (typeof error.payload.response === 'string') {
+          if (typeof error.payload.response === "string") {
             errorMessage = error.payload.response;
           } else if (error.payload.response.message) {
             errorMessage = error.payload.response.message;
@@ -236,12 +242,16 @@ export default function AskChildModal({
         }
       } else if (error.message) {
         // Handle JSON string error messages
-        if (typeof error.message === 'string' && error.message.startsWith('{')) {
+        if (
+          typeof error.message === "string" &&
+          error.message.startsWith("{")
+        ) {
           try {
             const parsedError = JSON.parse(error.message);
             if (parsedError.details && Array.isArray(parsedError.details)) {
               // Extract the first validation error message
-              errorMessage = parsedError.details[0]?.message || "Validation failed";
+              errorMessage =
+                parsedError.details[0]?.message || "Validation failed";
             } else if (parsedError.error) {
               errorMessage = parsedError.error;
             }
@@ -251,8 +261,12 @@ export default function AskChildModal({
           }
         } else if (error.message.includes("Validation failed")) {
           errorMessage = "Please check your input and try again.";
-        } else if (error.message.includes("network") || error.message.includes("connection")) {
-          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (
+          error.message.includes("network") ||
+          error.message.includes("connection")
+        ) {
+          errorMessage =
+            "Network error. Please check your connection and try again.";
         } else {
           errorMessage = error.message;
         }
@@ -318,12 +332,7 @@ export default function AskChildModal({
                   selectedQuestion?.content ||
                   "Select a question"}
               </Text>
-              {/* Debug: Show selected question details */}
-              {selectedQuestion && (
-                <Text style={styles.debugText}>
-                  Debug: ID={selectedQuestion.id}, Title=&quot;{selectedQuestion.title}&quot;, Content=&quot;{selectedQuestion.content}&quot;
-                </Text>
-              )}
+
             </TouchableOpacity>
           ) : (
             <TextInput
@@ -348,18 +357,22 @@ export default function AskChildModal({
           <MultiMediaPicker
             onMediaPicked={setAttachments}
             maxFiles={5}
-            allowedTypes={['image', 'video', 'audio']}
+            allowedTypes={["image", "video", "audio"]}
             maxFileSize={50}
           />
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity 
-              onPress={onClose} 
+            <TouchableOpacity
+              onPress={onClose}
               style={[styles.cancelButton, isSaving && styles.disabledButton]}
               disabled={isSaving}
             >
-              <Text style={[styles.cancelText, isSaving && styles.disabledText]}>Cancel</Text>
+              <Text
+                style={[styles.cancelText, isSaving && styles.disabledText]}
+              >
+                Cancel
+              </Text>
             </TouchableOpacity>
             <PrimaryButton
               title={isSaving ? "Saving..." : "Save Question & Answer"}
@@ -372,7 +385,9 @@ export default function AskChildModal({
           {isSaving && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={styles.loadingText}>Saving your question and answer...</Text>
+              <Text style={styles.loadingText}>
+                Saving your question and answer...
+              </Text>
             </View>
           )}
 
@@ -381,12 +396,7 @@ export default function AskChildModal({
             visible={showDropdownModal}
             onClose={() => setShowDropdownModal(false)}
             onSelect={(q) => {
-              console.log('AskChildModal: Question selected:', {
-                id: q.id,
-                title: q.title,
-                content: q.content,
-                category: q.category
-              });
+
               setSelectedQuestion(q);
             }}
           />
@@ -449,25 +459,20 @@ const styles = StyleSheet.create({
   cancelText: { color: "#666", fontSize: 16 },
   disabledButton: { opacity: 0.5 },
   disabledText: { color: "#999" },
-  loadingContainer: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "center", 
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
     paddingVertical: 12,
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
   },
-  loadingText: { 
-    color: "#666", 
-    fontSize: 14, 
+  loadingText: {
+    color: "#666",
+    fontSize: 14,
     marginLeft: 8,
     fontStyle: "italic",
   },
-  debugText: { 
-    color: "#999", 
-    fontSize: 10, 
-    marginTop: 4,
-    fontStyle: "italic",
-  },
+
 });

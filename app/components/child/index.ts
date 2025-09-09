@@ -1,0 +1,1 @@
+export { ChildProfileHeader } from './ChildProfileHeader';
